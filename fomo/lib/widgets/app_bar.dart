@@ -13,11 +13,7 @@ class FomoAppBar extends StatelessWidget {
         children: [
           Expanded(
             child: Center(
-              child: Text(
-                'FOMO',
-                style:
-                Theme.of(context).primaryTextTheme.titleLarge,
-              ),
+              child: Image.asset('assets/FOMO_logo.png'),
             ),
           ),
         ],

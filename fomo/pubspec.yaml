@@ -1,5 +1,5 @@
 name: fomo
-description: "A new Flutter project."
+description: "Host events, RSVP immediately, and never miss a night out again. Discover what's happening around you, see who's going, and get on the list before it's too late. Whether you're throwing the party or looking for one — FOMO has you covered."
 publish_to: 'none'
 version: 0.1.0+1
 
@@ -9,6 +9,7 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
+  flutter_native_splash: ^2.4.7
 
 dev_dependencies:
   flutter_test:
@@ -17,3 +18,11 @@ dev_dependencies:
 
 flutter:
   uses-material-design: true
+  assets:
+    - assets/FOMO_logo.png
+
+flutter_native_splash:
+  color: "#000000"
+  image: assets/FOMO_logo.png
+  android: true
+  ios: true
