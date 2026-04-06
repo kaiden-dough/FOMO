@@ -8,7 +8,7 @@ class FomoAppBar extends StatelessWidget {
     return Container(
       height: 56,
       padding: const EdgeInsets.symmetric(horizontal: 8),
-      decoration: BoxDecoration(color: const Color.fromARGB(255, 0, 0, 0)),
+      decoration: BoxDecoration(color: Colors.black),
       child: Row(
         children: [
           Expanded(
