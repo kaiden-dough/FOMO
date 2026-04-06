@@ -20,7 +20,10 @@ class EventItem extends StatelessWidget {
       onTap: onPressed,
       borderRadius: BorderRadius.circular(12),
       child: Card(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(12),
+          side: BorderSide(color: Colors.grey, width: 1),
+        ),
         child: Padding(
           padding: const EdgeInsets.all(16),
           child: Column(
