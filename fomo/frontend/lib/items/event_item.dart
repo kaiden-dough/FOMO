@@ -29,11 +29,22 @@ class EventItem extends StatelessWidget {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text(event.title, style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-              Text(DateFormat('MMM d, h:mm a').format(event.date), style: TextStyle(color: Colors.grey)),
-              Text(event.location, style: TextStyle(color: Colors.grey)),
-              Text(event.description, style: TextStyle(color: Colors.grey)),
-              Text('${event.attending} attending', style: TextStyle(color: Colors.grey)),
+              Row(
+                children: [
+                  CircleAvatar(
+                    backgroundImage: NetworkImage(event.poster.avatarUrl),
+                    radius: 16,
+                  ),
+                  const SizedBox(width: 8),
+                  Text(event.poster.name, style: const TextStyle(fontWeight: FontWeight.w500)),
+                ],
+              ),
+              const SizedBox(height: 8),
+              Text(event.title, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
+              Text(DateFormat('MMM d, h:mm a').format(event.date), style: const TextStyle(color: Colors.grey)),
+              Text(event.location, style: const TextStyle(color: Colors.grey)),
+              Text(event.description, style: const TextStyle(color: Colors.grey)),
+              Text('${event.attending} attending', style: const TextStyle(color: Colors.grey)),
               RSVPButton(
                 initialRsvpd: event.isRsvpd,
                 onRSVP: onRSVP,

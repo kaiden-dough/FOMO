@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:uuid/uuid.dart';
 import '../data/event.dart';
+import '../data/user.dart';
 
 class PostTab extends StatefulWidget {
 
@@ -19,6 +20,13 @@ class _PostTabState extends State<PostTab> {
   final _descriptionController = TextEditingController();
   DateTime? _selectedDate;
   TimeOfDay? _selectedTime;
+
+  // Mock current user
+  final User currentUser = User(
+    id: 'current',
+    name: 'You',
+    avatarUrl: 'https://via.placeholder.com/50',
+  );
  
   @override
   void dispose() {
@@ -61,6 +69,7 @@ class _PostTabState extends State<PostTab> {
         location: _locationController.text,
         attending: 1, // Assuming the creator is attending
         description: _descriptionController.text,
+        poster: currentUser,
         isRsvpd: true,
       );
       

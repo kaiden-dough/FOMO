@@ -1,3 +1,5 @@
+import 'user.dart';
+
 class Event {
   final String id;
   final String title;
@@ -5,6 +7,7 @@ class Event {
   final String location;
   int attending;
   final String description;
+  final User poster;
   // final String imageUrl;
   bool isRsvpd;
 
@@ -15,6 +18,7 @@ class Event {
     required this.location,
     required this.attending,
     required this.description,
+    required this.poster,
     // required this.imageUrl,
     this.isRsvpd = false,
   });
