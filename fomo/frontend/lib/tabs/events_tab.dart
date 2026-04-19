@@ -2,26 +2,74 @@ import 'package:flutter/material.dart';
 import '../data/event.dart';
 import '../items/event_item.dart';
 
-class EventsTab extends StatelessWidget {
+class EventsTab extends StatefulWidget {
   final List<Event> events;
   final Function(Event) onEventTapped;
   final Function(Event, bool) onRSVP;
 
-  const EventsTab({super.key, required this.events, required this.onEventTapped, required this.onRSVP});
+  const EventsTab({super.key, required this.events, required this.onEventTapped,
+ required this.onRSVP});
+
+  @override
+  State<EventsTab> createState() => _EventsTabState();
+}
+
+class _EventsTabState extends State<EventsTab> {
+  bool _showListView = true;
 
   @override
   Widget build(BuildContext context) {
     return Material(
-      child: ListView.builder(
-        itemCount: events.length,
-        itemBuilder: (context, index) {
-          final event = events[index];
-          return EventItem(
-            event: event,
-            onRSVP: (rsvpd) => onRSVP(event, rsvpd),
-            onPressed: () => onEventTapped(event),
-          );
+      color: Colors.black,
+      child: Column(
+        children: [
+          _buildViewSwitcher(),
+          Expanded(
+            child: _showListView
+                ? ListView.builder(
+                    itemCount: widget.events.length,
+                    itemBuilder: (context, index) {
+                      final event = widget.events[index];
+                      return EventItem(
+                        event: event,
+                        onRSVP: (rsvpd) => widget.onRSVP(event, rsvpd),
+                        onPressed: () => widget.onEventTapped(event),
+                      );
+                    },
+                  )
+                : const Center(
+                    child: Text(
+                      'Map view is not available yet',
+                      style: TextStyle(color: Colors.white),
+                    ),
+                  ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildViewSwitcher() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
+      child: ToggleButtons(
+        isSelected: [_showListView, !_showListView],
+        onPressed: (index) {
+          setState(() {
+            _showListView = index == 0;
+          });
         },
+        borderRadius: BorderRadius.circular(8.0),
+        borderColor: Colors.white24,
+        selectedBorderColor: Colors.white,
+        fillColor: Colors.white12,
+        color: Colors.white70,
+        selectedColor: Colors.white,
+        constraints: const BoxConstraints(minWidth: 100, minHeight: 40),
+        children: const [
+          Text('List View'),
+          Text('Map View'),
+        ],
       ),
     );
   }
