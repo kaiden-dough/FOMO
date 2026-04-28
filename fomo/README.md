@@ -31,6 +31,23 @@ cd .\fomo\frontend
 .\scripts\run_web.ps1 -MapsApiKey "YOUR_GOOGLE_MAPS_API_KEY" -GoogleWebClientId "YOUR_WEB_CLIENT_ID.apps.googleusercontent.com"
 ```
 
+## Long-term Vercel deploy (recommended)
+
+This repository includes a GitHub Actions workflow at `.github/workflows/deploy-frontend-vercel.yml` that:
+
+- builds Flutter web on GitHub Actions
+- deploys the prebuilt output to Vercel
+
+No Flutter runtime is required in Vercel build machines.
+
+### Required GitHub repository secrets
+
+- `BACKEND_URL` (your deployed backend URL)
+- `GOOGLE_WEB_CLIENT_ID` (OAuth web client ID)
+- `VERCEL_TOKEN` (personal token from Vercel)
+- `VERCEL_ORG_ID` (from Vercel project settings)
+- `VERCEL_PROJECT_ID` (from Vercel project settings)
+
 ### Required setup
 
 - In `frontend/web/index.html`, replace `YOUR_GOOGLE_MAPS_API_KEY` with your browser maps key.
