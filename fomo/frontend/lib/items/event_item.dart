@@ -6,12 +6,16 @@ class EventItem extends StatelessWidget {
   final Event event;
   final Function(bool) onRSVP;
   final VoidCallback onPressed;
+  final bool canRSVP;
+  final VoidCallback? onRSVPDisabledTap;
 
   const EventItem({
     super.key,
     required this.event,
     required this.onRSVP,
     required this.onPressed,
+    this.canRSVP = true,
+    this.onRSVPDisabledTap,
   });
 
   @override
@@ -48,6 +52,8 @@ class EventItem extends StatelessWidget {
               RSVPButton(
                 initialRsvpd: event.isRsvpd,
                 onRSVP: onRSVP,
+                enabled: canRSVP,
+                onDisabledTap: onRSVPDisabledTap,
               ),
             ],
           ),
@@ -61,11 +67,15 @@ class RSVPButton extends StatefulWidget {
 
   final bool initialRsvpd;
   final Function(bool) onRSVP;
+  final bool enabled;
+  final VoidCallback? onDisabledTap;
 
   const RSVPButton({
     super.key,
     required this.onRSVP,
     this.initialRsvpd = false,
+    this.enabled = true,
+    this.onDisabledTap,
   });
 
   @override
@@ -85,15 +95,21 @@ class _RSVPButtonState extends State<RSVPButton> {
   Widget build(BuildContext context) {
     return ElevatedButton(
       onPressed: () {
+        if (!widget.enabled) {
+          widget.onDisabledTap?.call();
+          return;
+        }
         setState(() => _rsvpd = !_rsvpd);
         widget.onRSVP(_rsvpd);
       },
       style: ElevatedButton.styleFrom(
-        backgroundColor: _rsvpd ? Color(0x66666666) : Colors.pinkAccent,
+        backgroundColor: widget.enabled
+            ? (_rsvpd ? const Color(0x66666666) : Colors.pinkAccent)
+            : Colors.grey,
         foregroundColor: Colors.white,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
       ),
-      child: Text(_rsvpd ? 'Cancel RSVP' : 'RSVP'),
+      child: Text(widget.enabled ? (_rsvpd ? 'Cancel RSVP' : 'RSVP') : 'Login to RSVP'),
     );
   }
 }

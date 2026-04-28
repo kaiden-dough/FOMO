@@ -7,12 +7,16 @@ class EventDetailsPage extends StatelessWidget {
   final Event event;
   final Function(bool) onRSVP;
   final VoidCallback onBack;
+  final bool canRSVP;
+  final VoidCallback? onRSVPDisabledTap;
 
   const EventDetailsPage({
     super.key,
     required this.event,
     required this.onRSVP,
     required this.onBack,
+    this.canRSVP = true,
+    this.onRSVPDisabledTap,
   });
 
   @override
@@ -43,6 +47,8 @@ class EventDetailsPage extends StatelessWidget {
                 RSVPButton(
                   initialRsvpd: event.isRsvpd,
                   onRSVP: onRSVP,
+                  enabled: canRSVP,
+                  onDisabledTap: onRSVPDisabledTap,
                 ),
               ],
             ),

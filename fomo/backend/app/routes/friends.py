@@ -24,11 +24,7 @@ def list_friends(
         select(User).join(Follow, Follow.follower_id == User.id).where(Follow.followed_id == user_id)
     ).scalars().all()
 
-    followed_ids = {u.id for u in following_rows}
-    suggested_query = select(User).where(User.id != user_id)
-    if followed_ids:
-        suggested_query = suggested_query.where(User.id.notin_(followed_ids))
-    suggested_rows = db.scalars(suggested_query).all()
+    suggested_rows = db.scalars(select(User).where(User.id != user_id)).all()
 
     return FriendsOut(
         following=[FriendOut(id=u.id, username=u.username) for u in following_rows],

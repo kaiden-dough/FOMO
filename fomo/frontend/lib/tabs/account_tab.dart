@@ -181,9 +181,9 @@ class _AccountTabState extends State<AccountTab> {
                       } on AuthException catch (e) {
                         if (!mounted) return;
                         setState(() => _error = e.message);
-                      } catch (_) {
+                      } catch (e) {
                         if (!mounted) return;
-                        setState(() => _error = 'Google sign-in failed.');
+                        setState(() => _error = 'Google sign-in failed: $e');
                       } finally {
                         if (mounted) setState(() => _loading = false);
                       }

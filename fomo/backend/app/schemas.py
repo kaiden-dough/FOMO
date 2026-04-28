@@ -14,7 +14,8 @@ class AccountLogin(BaseModel):
 
 
 class GoogleAuthIn(BaseModel):
-    id_token: str = Field(min_length=1)
+    id_token: str | None = None
+    access_token: str | None = None
 
 
 class AuthOut(BaseModel):

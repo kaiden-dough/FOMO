@@ -30,7 +30,12 @@ class _MyScaffoldState extends State<MyScaffold> {
   int _selectedIndex = 0;
   Event? _selectedEvent;
   bool _loading = true;
+  bool _isAuthenticated = false;
   String? _error;
+  bool _eventsShowListView = true;
+  bool _rsvpsShowListView = true;
+  final ScrollController _eventsScrollController = ScrollController();
+  final ScrollController _rsvpsScrollController = ScrollController();
 
   List<Event> _events = [];
   List<Event> _myRsvps = [];
@@ -44,6 +49,13 @@ class _MyScaffoldState extends State<MyScaffold> {
     _refreshData();
   }
 
+  @override
+  void dispose() {
+    _eventsScrollController.dispose();
+    _rsvpsScrollController.dispose();
+    super.dispose();
+  }
+
   Future<void> _refreshData() async {
     setState(() {
       _loading = true;
@@ -54,6 +66,7 @@ class _MyScaffoldState extends State<MyScaffold> {
       if (account == null) {
         if (!mounted) return;
         setState(() {
+          _isAuthenticated = false;
           _events = [];
           _myRsvps = [];
           _following = [];
@@ -68,6 +81,7 @@ class _MyScaffoldState extends State<MyScaffold> {
       final friends = await _backend.fetchFriends();
       if (!mounted) return;
       setState(() {
+        _isAuthenticated = true;
         _events = events;
         _myRsvps = myRsvps;
         _following = friends.following;
@@ -88,6 +102,14 @@ class _MyScaffoldState extends State<MyScaffold> {
   }
 
   Future<void> _onRSVP(Event event, bool rsvpd) async {
+    if (!_isAuthenticated) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please login first to RSVP.')),
+      );
+      setState(() => _selectedIndex = 4);
+      return;
+    }
     final previousRsvp = event.isRsvpd;
     final previousAttending = event.attending;
     setState(() {
@@ -110,6 +132,14 @@ class _MyScaffoldState extends State<MyScaffold> {
         const SnackBar(content: Text('Failed to update RSVP.')),
       );
     }
+  }
+
+  void _promptLoginForRsvp() {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Login required to RSVP.')),
+    );
+    setState(() => _selectedIndex = 4);
   }
 
   Future<void> _refreshRsvps() async {
@@ -145,6 +175,14 @@ class _MyScaffoldState extends State<MyScaffold> {
   }
 
   Future<void> _onEventPosted(Event event) async {
+    if (!_isAuthenticated) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please login first to post events.')),
+      );
+      setState(() => _selectedIndex = 4);
+      return;
+    }
     try {
       await _backend.postEvent(
         id: event.id,
@@ -169,21 +207,58 @@ class _MyScaffoldState extends State<MyScaffold> {
   }
 
   Future<void> _onFollow(User user) async {
+    if (!_isAuthenticated) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please login first to follow users.')),
+      );
+      setState(() => _selectedIndex = 4);
+      return;
+    }
     await _backend.follow(user.id);
     await _refreshData();
   }
 
   Future<void> _onUnfollow(User user) async {
+    if (!_isAuthenticated) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please login first to manage follows.')),
+      );
+      setState(() => _selectedIndex = 4);
+      return;
+    }
     await _backend.unfollow(user.id);
     await _refreshData();
   }
 
   Widget _buildBody() {
+    if (!_isAuthenticated && _selectedIndex != 0 && _selectedIndex != 4) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Text(
+              'Please login to use this section.',
+              style: TextStyle(color: Colors.white),
+            ),
+            const SizedBox(height: 8),
+            ElevatedButton(
+              onPressed: () => setState(() => _selectedIndex = 4),
+              child: const Text('Go to Account'),
+            ),
+          ],
+        ),
+      );
+    }
+
     if (_selectedEvent != null) {
       return EventDetailsPage(
         event: _selectedEvent!,
         onRSVP: (rsvpd) => _onRSVP(_selectedEvent!, rsvpd),
         onBack: () => setState(() => _selectedEvent = null),
+        canRSVP: _isAuthenticated,
+        onRSVPDisabledTap: _promptLoginForRsvp,
       );
     }
 
@@ -210,12 +285,20 @@ class _MyScaffoldState extends State<MyScaffold> {
           events: _events,
           onEventTapped: (event) => setState(() => _selectedEvent = event),
           onRSVP: (event, rsvpd) => _onRSVP(event, rsvpd),
+          canRSVP: _isAuthenticated,
+          onRSVPDisabledTap: _promptLoginForRsvp,
+          showListView: _eventsShowListView,
+          onViewModeChanged: (showList) => setState(() => _eventsShowListView = showList),
+          listScrollController: _eventsScrollController,
         );
       case 1:
         return RSVPsTab(
           events: _myRsvps,
           onEventTapped: (event) => setState(() => _selectedEvent = event),
           onRSVP: (event, rsvpd) => _onRSVP(event, rsvpd),
+          showListView: _rsvpsShowListView,
+          onViewModeChanged: (showList) => setState(() => _rsvpsShowListView = showList),
+          listScrollController: _rsvpsScrollController,
         );
       case 2:
         return PostTab(
@@ -245,8 +328,8 @@ class _MyScaffoldState extends State<MyScaffold> {
 
   @override
   Widget build(BuildContext context) {
-    return Material(
-      child: Column(
+    return Scaffold(
+      body: Column(
         children: [
           FomoAppBar(),
           Expanded(child: _buildBody()),

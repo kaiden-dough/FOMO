@@ -32,6 +32,10 @@ class AuthService {
     'BACKEND_URL',
     defaultValue: '',
   );
+  static const _googleWebClientId = String.fromEnvironment(
+    'GOOGLE_WEB_CLIENT_ID',
+    defaultValue: '',
+  );
 
   final http.Client _client;
 
@@ -95,20 +99,48 @@ class AuthService {
   }
 
   Future<Account> signInWithGoogle() async {
-    final googleUser = await GoogleSignIn(scopes: ['email']).signIn();
+    final googleSignIn = GoogleSignIn(
+      scopes: const ['email'],
+      clientId: kIsWeb && _googleWebClientId.isNotEmpty ? _googleWebClientId : null,
+    );
+    if (kIsWeb && _googleWebClientId.isEmpty) {
+      throw const AuthException(
+        'Missing GOOGLE_WEB_CLIENT_ID. Run Flutter with --dart-define=GOOGLE_WEB_CLIENT_ID=...',
+      );
+    }
+
+    GoogleSignInAccount? googleUser = await googleSignIn.signInSilently();
+    try {
+      googleUser ??= await googleSignIn.signIn();
+    } catch (e) {
+      final message = e.toString();
+      if (message.contains('popup_closed')) {
+        throw const AuthException(
+          'Google popup was closed or blocked. Allow popups and try again.',
+        );
+      }
+      throw AuthException('Google sign-in error: $message');
+    }
     if (googleUser == null) {
       throw const AuthException('Google sign-in cancelled.');
     }
     final auth = await googleUser.authentication;
     final idToken = auth.idToken;
-    if (idToken == null || idToken.isEmpty) {
-      throw const AuthException('Missing Google ID token.');
+    final accessToken = auth.accessToken;
+    if ((idToken == null || idToken.isEmpty) &&
+        (accessToken == null || accessToken.isEmpty)) {
+      throw const AuthException(
+        'Google token not returned. Try again and keep the popup open.',
+      );
     }
 
     final response = await _client.post(
       Uri.parse('$_baseUrl/auth/google'),
       headers: {'Content-Type': 'application/json'},
-      body: jsonEncode({'id_token': idToken}),
+      body: jsonEncode({
+        'id_token': idToken,
+        'access_token': accessToken,
+      }),
     );
     if (response.statusCode < 200 || response.statusCode >= 300) {
       throw AuthException(_readErrorMessage(response.body));

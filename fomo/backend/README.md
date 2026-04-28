@@ -23,15 +23,28 @@ cp .env.example .env
 uvicorn app.main:app --reload --port 8000
 ```
 
-## Auth (temporary)
+## Auth
 
-Send a `X-User-Id` header on requests.
+- Email/password:
+  - `POST /auth/register`
+  - `POST /auth/login`
+- Google sign-in:
+  - `POST /auth/google` with `{ "id_token": "<google-id-token>" }`
+- Protected endpoints use:
+  - `Authorization: Bearer <token>`
 
 ## Endpoints
 
 - `GET /health`
+- `POST /auth/register`
+- `POST /auth/login`
+- `POST /auth/google`
+- `GET /auth/me`
 - `GET /events`
 - `POST /events`
 - `POST /events/{event_id}/rsvp`
 - `DELETE /events/{event_id}/rsvp`
 - `GET /me/rsvps`
+- `GET /friends`
+- `POST /friends/{target_user_id}/follow`
+- `DELETE /friends/{target_user_id}/follow`

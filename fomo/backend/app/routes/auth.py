@@ -3,6 +3,7 @@ import uuid
 from fastapi import APIRouter, Depends, HTTPException
 from google.auth.transport import requests as google_requests
 from google.oauth2 import id_token as google_id_token
+import requests
 from sqlalchemy import select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
@@ -62,13 +63,31 @@ def login_account(payload: AccountLogin, db: Session = Depends(get_db)):
 
 @router.post("/google", response_model=AuthOut)
 def login_with_google(payload: GoogleAuthIn, db: Session = Depends(get_db)):
-    try:
-        token_info = google_id_token.verify_oauth2_token(
-            payload.id_token,
-            google_requests.Request(),
-            GOOGLE_CLIENT_ID or None,
+    if not payload.id_token and not payload.access_token:
+        raise HTTPException(status_code=400, detail="Google token is required")
+
+    token_info = None
+    if payload.id_token:
+        try:
+            token_info = google_id_token.verify_oauth2_token(
+                payload.id_token,
+                google_requests.Request(),
+                GOOGLE_CLIENT_ID or None,
+            )
+        except Exception:
+            token_info = None
+
+    if token_info is None and payload.access_token:
+        userinfo_res = requests.get(
+            "https://www.googleapis.com/oauth2/v3/userinfo",
+            headers={"Authorization": f"Bearer {payload.access_token}"},
+            timeout=10,
         )
-    except Exception:
+        if userinfo_res.status_code >= 400:
+            raise HTTPException(status_code=401, detail="Invalid Google access token")
+        token_info = userinfo_res.json()
+
+    if token_info is None:
         raise HTTPException(status_code=401, detail="Invalid Google token")
 
     google_sub = token_info.get("sub")
