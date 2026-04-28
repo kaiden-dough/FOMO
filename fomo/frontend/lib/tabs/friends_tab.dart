@@ -7,10 +7,10 @@ import '../items/event_item.dart';
 class FriendsTab extends StatefulWidget {
   final List<User> following;
   final List<User> followers;
-  final List<Event> allEvents;
+  final List<Event> feedEvents;
   final List<User> potentialFriends;
-  final Function(User) onFollow;
-  final Function(User) onUnfollow;
+  final Future<void> Function(User) onFollow;
+  final Future<void> Function(User) onUnfollow;
   final Function(Event) onEventTapped;
   final Function(Event, bool) onRSVP;
 
@@ -18,7 +18,7 @@ class FriendsTab extends StatefulWidget {
     super.key,
     required this.following,
     required this.followers,
-    required this.allEvents,
+    required this.feedEvents,
     required this.potentialFriends,
     required this.onFollow,
     required this.onUnfollow,
@@ -35,11 +35,6 @@ class _FriendsTabState extends State<FriendsTab> {
 
   @override
   Widget build(BuildContext context) {
-    // Filter events from following
-    final feedEvents = widget.allEvents.where((event) =>
-      widget.following.any((user) => user.id == event.poster.id)
-    ).toList();
-
     return Scaffold(
       backgroundColor: Colors.black,
       body: Column(
@@ -104,17 +99,17 @@ class _FriendsTabState extends State<FriendsTab> {
           _buildViewSwitcher(),
           Expanded(
             child: _showListView
-                ? feedEvents.isEmpty
+                ? widget.feedEvents.isEmpty
                     ? const Center(
                         child: Text(
-                          'No events from friends yet',
+                          'No feed events yet',
                           style: TextStyle(color: Colors.white),
                         ),
                       )
                     : ListView.builder(
-                        itemCount: feedEvents.length,
+                        itemCount: widget.feedEvents.length,
                         itemBuilder: (context, index) {
-                          final event = feedEvents[index];
+                          final event = widget.feedEvents[index];
                           return EventItem(
                             event: event,
                             onRSVP: (rsvpd) => widget.onRSVP(event, rsvpd),

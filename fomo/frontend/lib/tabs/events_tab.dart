@@ -1,47 +1,48 @@
 import 'package:flutter/material.dart';
 import '../data/event.dart';
 import '../items/event_item.dart';
+import '../widgets/events_map.dart';
 
-class EventsTab extends StatefulWidget {
+class EventsTab extends StatelessWidget {
   final List<Event> events;
   final Function(Event) onEventTapped;
   final Function(Event, bool) onRSVP;
+  final bool canRSVP;
+  final VoidCallback? onRSVPDisabledTap;
+  final bool? showListView;
+  final ValueChanged<bool>? onViewModeChanged;
+  final ScrollController? listScrollController;
 
   const EventsTab({super.key, required this.events, required this.onEventTapped,
- required this.onRSVP});
-
-  @override
-  State<EventsTab> createState() => _EventsTabState();
-}
-
-class _EventsTabState extends State<EventsTab> {
-  bool _showListView = true;
+ required this.onRSVP, this.canRSVP = true, this.onRSVPDisabledTap, this.showListView, this.onViewModeChanged, this.listScrollController});
 
   @override
   Widget build(BuildContext context) {
+    final isListView = showListView ?? true;
     return Material(
       color: Colors.black,
       child: Column(
         children: [
-          _buildViewSwitcher(),
+          _buildViewSwitcher(isListView),
           Expanded(
-            child: _showListView
+            child: isListView
                 ? ListView.builder(
-                    itemCount: widget.events.length,
+                    controller: listScrollController,
+                    itemCount: events.length,
                     itemBuilder: (context, index) {
-                      final event = widget.events[index];
+                      final event = events[index];
                       return EventItem(
                         event: event,
-                        onRSVP: (rsvpd) => widget.onRSVP(event, rsvpd),
-                        onPressed: () => widget.onEventTapped(event),
+                        onRSVP: (rsvpd) => onRSVP(event, rsvpd),
+                        onPressed: () => onEventTapped(event),
+                        canRSVP: canRSVP,
+                        onRSVPDisabledTap: onRSVPDisabledTap,
                       );
                     },
                   )
-                : const Center(
-                    child: Text(
-                      'Map view is not available yet',
-                      style: TextStyle(color: Colors.white),
-                    ),
+                : EventsMap(
+                    events: events,
+                    onEventTapped: onEventTapped,
                   ),
           ),
         ],
@@ -49,15 +50,13 @@ class _EventsTabState extends State<EventsTab> {
     );
   }
 
-  Widget _buildViewSwitcher() {
+  Widget _buildViewSwitcher(bool isListView) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 12.0),
       child: ToggleButtons(
-        isSelected: [_showListView, !_showListView],
+        isSelected: [isListView, !isListView],
         onPressed: (index) {
-          setState(() {
-            _showListView = index == 0;
-          });
+          onViewModeChanged?.call(index == 0);
         },
         borderRadius: BorderRadius.circular(8.0),
         borderColor: Colors.white24,

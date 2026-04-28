@@ -1,11 +1,15 @@
 import 'package:flutter/material.dart';
+import 'package:geocoding/geocoding.dart';
+import 'dart:async';
+import 'dart:convert';
 import 'package:uuid/uuid.dart';
+import 'package:http/http.dart' as http;
 import '../data/event.dart';
 import '../data/user.dart';
 
 class PostTab extends StatefulWidget {
 
-  final Function(Event) onEventPosted;
+  final Future<void> Function(Event) onEventPosted;
 
   const PostTab({super.key, required this.onEventPosted});
 
@@ -18,8 +22,14 @@ class _PostTabState extends State<PostTab> {
   final _titleController = TextEditingController();
   final _locationController = TextEditingController();
   final _descriptionController = TextEditingController();
+  final _locationFocusNode = FocusNode();
   DateTime? _selectedDate;
   TimeOfDay? _selectedTime;
+  bool _resolvingAddress = false;
+  bool _loadingSuggestions = false;
+  Timer? _locationDebounce;
+  List<_AddressSuggestion> _locationSuggestions = [];
+  _AddressSuggestion? _selectedSuggestion;
 
   // Mock current user
   final User currentUser = User(
@@ -33,7 +43,59 @@ class _PostTabState extends State<PostTab> {
     _titleController.dispose();
     _locationController.dispose();
     _descriptionController.dispose();
+    _locationFocusNode.dispose();
+    _locationDebounce?.cancel();
     super.dispose();
+  }
+
+  void _onLocationChanged(String value) {
+    if (_selectedSuggestion != null && value.trim() != _selectedSuggestion!.label) {
+      _selectedSuggestion = null;
+    }
+    _locationDebounce?.cancel();
+    final query = value.trim();
+    if (query.length < 3) {
+      setState(() {
+        _locationSuggestions = [];
+        _loadingSuggestions = false;
+      });
+      return;
+    }
+
+    _locationDebounce = Timer(const Duration(milliseconds: 350), () async {
+      setState(() => _loadingSuggestions = true);
+      try {
+        final uri = Uri.parse(
+          'https://nominatim.openstreetmap.org/search?format=json&limit=5&addressdetails=1&q=${Uri.encodeQueryComponent(query)}',
+        );
+        final response = await http.get(
+          uri,
+          headers: {'User-Agent': 'FOMO/1.0 address-autocomplete'},
+        );
+        if (response.statusCode >= 200 && response.statusCode < 300) {
+          final parsed = jsonDecode(response.body) as List<dynamic>;
+          final suggestions = parsed
+              .map((e) => e as Map<String, dynamic>)
+              .map(
+                (e) => _AddressSuggestion(
+                  label: (e['display_name'] as String?) ?? '',
+                  latitude: double.tryParse((e['lat'] as String?) ?? ''),
+                  longitude: double.tryParse((e['lon'] as String?) ?? ''),
+                ),
+              )
+              .where((s) => s.label.isNotEmpty)
+              .toList();
+          if (!mounted) return;
+          setState(() => _locationSuggestions = suggestions);
+        } else if (mounted) {
+          setState(() => _locationSuggestions = []);
+        }
+      } catch (_) {
+        if (mounted) setState(() => _locationSuggestions = []);
+      } finally {
+        if (mounted) setState(() => _loadingSuggestions = false);
+      }
+    });
   }
 
   Future<void> _pickDate() async {
@@ -54,8 +116,39 @@ class _PostTabState extends State<PostTab> {
     if (picked != null) setState(() => _selectedTime = picked);
   }
 
-  void _submit() {
+  Future<void> _submit() async {
+    if (_resolvingAddress) return;
     if (_formKey.currentState!.validate() && _selectedDate != null && _selectedTime != null) {
+      setState(() => _resolvingAddress = true);
+      double? latitude;
+      double? longitude;
+      if (_selectedSuggestion != null &&
+          _locationController.text.trim() == _selectedSuggestion!.label &&
+          _selectedSuggestion!.latitude != null &&
+          _selectedSuggestion!.longitude != null) {
+        latitude = _selectedSuggestion!.latitude;
+        longitude = _selectedSuggestion!.longitude;
+      } else {
+        try {
+          final results = await locationFromAddress(_locationController.text.trim());
+          if (results.isNotEmpty) {
+            latitude = results.first.latitude;
+            longitude = results.first.longitude;
+          }
+        } catch (_) {}
+      }
+
+      if (latitude == null || longitude == null) {
+        if (!mounted) return;
+        setState(() => _resolvingAddress = false);
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Please enter a valid address (street/city/state).'),
+          ),
+        );
+        return;
+      }
+
       final event = Event(
         id: Uuid().v4(),
         title: _titleController.text,
@@ -70,26 +163,29 @@ class _PostTabState extends State<PostTab> {
         attending: 1, // Assuming the creator is attending
         description: _descriptionController.text,
         poster: currentUser,
+        latitude: latitude,
+        longitude: longitude,
         isRsvpd: true,
       );
       
-      widget.onEventPosted(event);   // database call goes here to save to events and account event
+      await widget.onEventPosted(event);
 
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Event posted')),
-      );
-
+      if (!mounted) return;
       _titleController.clear();
       _locationController.clear();
       _descriptionController.clear();
       setState(() {
         _selectedDate = null;
         _selectedTime = null;
+        _selectedSuggestion = null;
+        _resolvingAddress = false;
       });
     } else if (_selectedDate == null || _selectedTime == null) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Please select a date and time')),
       );
+    } else {
+      setState(() => _resolvingAddress = false);
     }
   }
 
@@ -118,12 +214,50 @@ class _PostTabState extends State<PostTab> {
 
               TextFormField(
                 controller: _locationController,
+                focusNode: _locationFocusNode,
+                onChanged: _onLocationChanged,
                 decoration: const InputDecoration(
-                  labelText: 'Location',
+                  labelText: 'Location (real address)',
+                  hintText: '123 Main St, City, State',
                   border: OutlineInputBorder(),
                 ),
                 validator: (value) => value == null || value.isEmpty ? 'Enter a location' : null,
               ),
+              if (_loadingSuggestions) ...[
+                const SizedBox(height: 8),
+                const LinearProgressIndicator(minHeight: 2),
+              ],
+              if (_locationSuggestions.isNotEmpty && _locationFocusNode.hasFocus) ...[
+                const SizedBox(height: 8),
+                Container(
+                  decoration: BoxDecoration(
+                    color: Colors.white10,
+                    border: Border.all(color: Colors.white24),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Column(
+                    children: _locationSuggestions.map((suggestion) {
+                      return ListTile(
+                        dense: true,
+                        title: Text(
+                          suggestion.label,
+                          style: const TextStyle(color: Colors.white),
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        onTap: () {
+                          _locationController.text = suggestion.label;
+                          setState(() {
+                            _selectedSuggestion = suggestion;
+                            _locationSuggestions = [];
+                          });
+                          _locationFocusNode.unfocus();
+                        },
+                      );
+                    }).toList(),
+                  ),
+                ),
+              ],
               const SizedBox(height: 16),
 
               TextFormField(
@@ -165,14 +299,17 @@ class _PostTabState extends State<PostTab> {
               SizedBox(
                 width: double.infinity,
                 child: ElevatedButton(
-                  onPressed: _submit,
+                  onPressed: _resolvingAddress ? null : () => _submit(),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.pinkAccent,
                     foregroundColor: Colors.white,
                     padding: const EdgeInsets.symmetric(vertical: 16),
                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
                   ),
-                  child: const Text('Post Event', style: TextStyle(fontSize: 16)),
+                  child: Text(
+                    _resolvingAddress ? 'Validating address...' : 'Post Event',
+                    style: const TextStyle(fontSize: 16),
+                  ),
                 ),
               ),
             ],
@@ -181,4 +318,16 @@ class _PostTabState extends State<PostTab> {
       ),
     );
   }
+}
+
+class _AddressSuggestion {
+  final String label;
+  final double? latitude;
+  final double? longitude;
+
+  const _AddressSuggestion({
+    required this.label,
+    required this.latitude,
+    required this.longitude,
+  });
 }

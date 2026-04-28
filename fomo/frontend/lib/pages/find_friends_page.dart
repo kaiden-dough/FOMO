@@ -3,8 +3,8 @@ import '../data/user.dart';
 
 class FindFriendsPage extends StatefulWidget {
   final List<User> potentialFriends;
-  final Function(User) onFollow;
-  final Function(User) onUnfollow;
+  final Future<void> Function(User) onFollow;
+  final Future<void> Function(User) onUnfollow;
   final List<User> following;
 
   const FindFriendsPage({
@@ -56,20 +56,23 @@ class _FindFriendsPageState extends State<FindFriendsPage> {
                   ),
                   title: Text(user.name, style: const TextStyle(color: Colors.white)),
                   trailing: ElevatedButton(
-                    onPressed: () {
-                      setState(() {
-                        if (widget.following.contains(user)) {
-                          widget.onUnfollow(user);
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(content: Text('Unfollowed ${user.name}')),
-                          );
-                        } else {
-                          widget.onFollow(user);
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(content: Text('Followed ${user.name}')),
-                          );
-                        }
-                      });
+                    onPressed: () async {
+                      if (widget.following.contains(user)) {
+                        await widget.onUnfollow(user);
+                        if (!mounted) return;
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(content: Text('Unfollowed ${user.name}')),
+                        );
+                      } else {
+                        await widget.onFollow(user);
+                        if (!mounted) return;
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(content: Text('Followed ${user.name}')),
+                        );
+                      }
+                      if (mounted) {
+                        setState(() {});
+                      }
                     },
                     child: Text(widget.following.contains(user) ? 'Unfollow' : 'Follow'),
                   ),

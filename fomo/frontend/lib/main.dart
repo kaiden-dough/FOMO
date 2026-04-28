@@ -1,191 +1,335 @@
 import 'package:flutter/material.dart';
 import 'package:uuid/uuid.dart';
+
+import 'data/event.dart';
+import 'data/user.dart';
+import 'pages/event_details_page.dart';
+import 'services/auth_service.dart';
+import 'services/backend_service.dart';
+import 'tabs/account_tab.dart';
+import 'tabs/events_tab.dart';
+import 'tabs/friends_tab.dart';
+import 'tabs/post_tab.dart';
+import 'tabs/rsvps_tab.dart';
 import 'widgets/app_bar.dart';
 import 'widgets/nav_bar.dart';
-import 'tabs/events_tab.dart';
-import 'tabs/rsvps_tab.dart';
-import 'tabs/post_tab.dart';
-import 'tabs/friends_tab.dart';
-import 'tabs/account_tab.dart';
-import 'data/event.dart';import 'data/user.dart';import 'data/user.dart';
-import 'pages/event_details_page.dart';
 
 final uuid = Uuid();
 
 class MyScaffold extends StatefulWidget {
   const MyScaffold({super.key});
 
-@override
+  @override
   State<MyScaffold> createState() => _MyScaffoldState();
 }
 
 class _MyScaffoldState extends State<MyScaffold> {
+  final BackendService _backend = BackendService();
+  final AuthService _auth = AuthService();
+
   int _selectedIndex = 0;
   Event? _selectedEvent;
+  bool _loading = true;
+  bool _isAuthenticated = false;
+  String? _error;
+  bool _eventsShowListView = true;
+  bool _rsvpsShowListView = true;
+  final ScrollController _eventsScrollController = ScrollController();
+  final ScrollController _rsvpsScrollController = ScrollController();
 
-  // Mock users
-  final List<User> _mockUsers = [
-    User(id: 'u1', name: 'Alice', avatarUrl: 'https://via.placeholder.com/50'),
-    User(id: 'u2', name: 'Bob', avatarUrl: 'https://via.placeholder.com/50'),
-    User(id: 'u3', name: 'Charlie', avatarUrl: 'https://via.placeholder.com/50'),
-    User(id: 'u4', name: 'Diana', avatarUrl: 'https://via.placeholder.com/50'),
-    User(id: 'u5', name: 'Eve', avatarUrl: 'https://via.placeholder.com/50'),
-    User(id: 'u6', name: 'Frank', avatarUrl: 'https://via.placeholder.com/50'),
-  ];
+  List<Event> _events = [];
+  List<Event> _myRsvps = [];
+  List<User> _following = [];
+  List<User> _followers = [];
+  List<User> _potentialFriends = [];
 
-  // Friends data
-  List<User> following = [
-    User(id: 'u1', name: 'Alice', avatarUrl: 'https://via.placeholder.com/50'),
-    User(id: 'u2', name: 'Bob', avatarUrl: 'https://via.placeholder.com/50'),
-  ];
-
-  List<User> followers = [
-    User(id: 'u3', name: 'Charlie', avatarUrl: 'https://via.placeholder.com/50'),
-    User(id: 'u4', name: 'Diana', avatarUrl: 'https://via.placeholder.com/50'),
-  ];
-
-  List<User> potentialFriends = [
-    User(id: 'u7', name: 'Grace', avatarUrl: 'https://via.placeholder.com/50'),
-    User(id: 'u8', name: 'Henry', avatarUrl: 'https://via.placeholder.com/50'),
-    User(id: 'u9', name: 'Ivy', avatarUrl: 'https://via.placeholder.com/50'),
-  ];
-
-  final List<Event> _events = [   // get events from backend
-    Event(
-      id: uuid.v4(),
-      title: "Concert in the Park",
-      date: DateTime(2026, 4, 5, 20, 30),
-      location: "Central Park",
-      attending: 42,
-      description: "Join us for a night of music and fun in the park!",
-      poster: User(id: 'u1', name: 'Alice', avatarUrl: 'https://via.placeholder.com/50'),
-      // imageUrl: "https://example.com/concert.jpg",
-    ),
-    Event(
-      id: uuid.v4(),
-      title: "Food Truck Festival",
-      date: DateTime(2026, 5, 10, 12, 0),
-      location: "Downtown",
-      attending: 85,
-      description: "Taste delicious food from the best food trucks in town!",
-      poster: User(id: 'u2', name: 'Bob', avatarUrl: 'https://via.placeholder.com/50'),
-      // imageUrl: "https://example.com/food_truck.jpg",
-    ),
-    Event(
-      id: uuid.v4(),
-      title: "Art Gallery Opening",
-      date: DateTime(2026, 6, 15, 18, 0),
-      location: "City Art Gallery",
-      attending: 30,
-      description: "Experience the latest art from local artists at our gallery opening.",
-      poster: User(id: 'u3', name: 'Charlie', avatarUrl: 'https://via.placeholder.com/50'),
-      // imageUrl: "https://example.com/art_gallery.jpg",
-    ),
-    Event(
-      id: uuid.v4(),
-      title: "Outdoor Movie Night",
-      date: DateTime(2026, 7, 20, 20, 0),
-      location: "Riverside Park",
-      attending: 60,
-      description: "Bring your blankets and enjoy a movie under the stars at our outdoor movie night!",
-      poster: User(id: 'u4', name: 'Diana', avatarUrl: 'https://via.placeholder.com/50'),
-      // imageUrl: "https://example.com/movie_night.jpg",
-    ),
-    Event(
-      id: uuid.v4(),
-      title: "Open Mic Night",
-      date: DateTime(2026, 5, 10, 12, 0),
-      location: "Downtown",
-      attending: 85,
-      description: "Show off your talents at our open mic night! Sing, perform comedy, or share your poetry with the community.",
-      poster: User(id: 'u5', name: 'Eve', avatarUrl: 'https://via.placeholder.com/50'),
-      // imageUrl: "https://example.com/open_mic.jpg",
-    ),
-    Event(
-      id: uuid.v4(),
-      title: "Tech Meetup",
-      date: DateTime(2026, 8, 25, 18, 0),
-      location: "Tech Hub",
-      attending: 50,
-      description: "Connect with fellow tech enthusiasts at our monthly tech meetup. Share ideas, network, and learn about the latest trends in technology.",
-      poster: User(id: 'u6', name: 'Frank', avatarUrl: 'https://via.placeholder.com/50'),
-      // imageUrl: "https://example.com/tech_meetup.jpg",
-    ),
-  ];
-
-  void _onEventTapped(Event event) {
-    setState(() => _selectedEvent = event);
+  @override
+  void initState() {
+    super.initState();
+    _refreshData();
   }
 
-  void _onRSVP(Event event, bool rsvpd) {
+  @override
+  void dispose() {
+    _eventsScrollController.dispose();
+    _rsvpsScrollController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _refreshData() async {
     setState(() {
-      event.isRsvpd = rsvpd;
-      event.attending += rsvpd ? 1 : -1;
+      _loading = true;
+      _error = null;
     });
+    try {
+      final account = await _auth.getCurrentAccount();
+      if (account == null) {
+        if (!mounted) return;
+        setState(() {
+          _isAuthenticated = false;
+          _events = [];
+          _myRsvps = [];
+          _following = [];
+          _followers = [];
+          _potentialFriends = [];
+        });
+        return;
+      }
+
+      final events = await _backend.fetchEvents();
+      final myRsvps = await _backend.fetchMyRsvps();
+      final friends = await _backend.fetchFriends();
+      if (!mounted) return;
+      setState(() {
+        _isAuthenticated = true;
+        _events = events;
+        _myRsvps = myRsvps;
+        _following = friends.following;
+        _followers = friends.followers;
+        _potentialFriends = friends.suggested;
+      });
+    } on AuthException catch (e) {
+      if (!mounted) return;
+      setState(() => _error = e.message);
+    } catch (_) {
+      if (!mounted) return;
+      setState(() => _error = 'Could not load backend data.');
+    } finally {
+      if (mounted) {
+        setState(() => _loading = false);
+      }
+    }
   }
 
-  void _onEventPosted(Event event) {
-    setState(() => _events.add(event));
-  }
-
-  void _onFollow(User user) {
+  Future<void> _onRSVP(Event event, bool rsvpd) async {
+    if (!_isAuthenticated) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please login first to RSVP.')),
+      );
+      setState(() => _selectedIndex = 4);
+      return;
+    }
+    final previousRsvp = event.isRsvpd;
+    final previousAttending = event.attending;
     setState(() {
-      if (!following.contains(user)) {
-        following.add(user);
+      _applyEventLocalUpdate(event.id, rsvpd, previousAttending + (rsvpd ? 1 : -1));
+    });
+
+    try {
+      if (rsvpd) {
+        await _backend.rsvp(event.id);
+      } else {
+        await _backend.unrsvp(event.id);
+      }
+      await _refreshRsvps();
+    } catch (_) {
+      if (!mounted) return;
+      setState(() {
+        _applyEventLocalUpdate(event.id, previousRsvp, previousAttending);
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Failed to update RSVP.')),
+      );
+    }
+  }
+
+  void _promptLoginForRsvp() {
+    if (!mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(content: Text('Login required to RSVP.')),
+    );
+    setState(() => _selectedIndex = 4);
+  }
+
+  Future<void> _refreshRsvps() async {
+    final myRsvps = await _backend.fetchMyRsvps();
+    if (!mounted) return;
+    setState(() {
+      _myRsvps = myRsvps;
+      final rsvpIds = _myRsvps.map((e) => e.id).toSet();
+      for (final event in _events) {
+        event.isRsvpd = rsvpIds.contains(event.id);
       }
     });
   }
 
-  void _onUnfollow(User user) {
-    setState(() {
-      following.remove(user);
-    });
+  void _applyEventLocalUpdate(String eventId, bool rsvpd, int attending) {
+    final safeAttending = attending.clamp(0, 1 << 30);
+    for (final e in _events) {
+      if (e.id == eventId) {
+        e.isRsvpd = rsvpd;
+        e.attending = safeAttending;
+      }
+    }
+    for (final e in _myRsvps) {
+      if (e.id == eventId) {
+        e.isRsvpd = rsvpd;
+        e.attending = safeAttending;
+      }
+    }
+    if (_selectedEvent?.id == eventId) {
+      _selectedEvent!.isRsvpd = rsvpd;
+      _selectedEvent!.attending = safeAttending;
+    }
+  }
+
+  Future<void> _onEventPosted(Event event) async {
+    if (!_isAuthenticated) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please login first to post events.')),
+      );
+      setState(() => _selectedIndex = 4);
+      return;
+    }
+    try {
+      await _backend.postEvent(
+        id: event.id,
+        title: event.title,
+        date: event.date,
+        location: event.location,
+        description: event.description,
+        latitude: event.latitude,
+        longitude: event.longitude,
+      );
+      await _refreshData();
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Event posted')),
+      );
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Failed to post event: $e')),
+      );
+    }
+  }
+
+  Future<void> _onFollow(User user) async {
+    if (!_isAuthenticated) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please login first to follow users.')),
+      );
+      setState(() => _selectedIndex = 4);
+      return;
+    }
+    await _backend.follow(user.id);
+    await _refreshData();
+  }
+
+  Future<void> _onUnfollow(User user) async {
+    if (!_isAuthenticated) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Please login first to manage follows.')),
+      );
+      setState(() => _selectedIndex = 4);
+      return;
+    }
+    await _backend.unfollow(user.id);
+    await _refreshData();
   }
 
   Widget _buildBody() {
+    if (!_isAuthenticated && _selectedIndex != 0 && _selectedIndex != 4) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const Text(
+              'Please login to use this section.',
+              style: TextStyle(color: Colors.white),
+            ),
+            const SizedBox(height: 8),
+            ElevatedButton(
+              onPressed: () => setState(() => _selectedIndex = 4),
+              child: const Text('Go to Account'),
+            ),
+          ],
+        ),
+      );
+    }
+
     if (_selectedEvent != null) {
       return EventDetailsPage(
         event: _selectedEvent!,
         onRSVP: (rsvpd) => _onRSVP(_selectedEvent!, rsvpd),
         onBack: () => setState(() => _selectedEvent = null),
+        canRSVP: _isAuthenticated,
+        onRSVPDisabledTap: _promptLoginForRsvp,
+      );
+    }
+
+    if (_loading && _selectedIndex != 4) {
+      return const Center(child: CircularProgressIndicator());
+    }
+
+    if (_error != null && _selectedIndex != 4) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Text(_error!, style: const TextStyle(color: Colors.white)),
+            const SizedBox(height: 8),
+            ElevatedButton(onPressed: _refreshData, child: const Text('Retry')),
+          ],
+        ),
       );
     }
 
     switch (_selectedIndex) {
-      case 0: return EventsTab(
-        events: _events,
-        onEventTapped: _onEventTapped,
-        onRSVP: _onRSVP,
-      );
-      case 1: return RSVPsTab(
-        events: _events.where((element) => element.isRsvpd).toList(),
-        onEventTapped: _onEventTapped,
-        onRSVP: _onRSVP,
-      );
-      case 2: return PostTab(onEventPosted: _onEventPosted);
-      case 3: return FriendsTab(
-        following: following,
-        followers: followers,
-        allEvents: _events,
-        potentialFriends: potentialFriends,
-        onFollow: _onFollow,
-        onUnfollow: _onUnfollow,
-        onEventTapped: _onEventTapped,
-        onRSVP: _onRSVP,
-      );
-      case 4: return AccountTab();
-      default: return EventsTab(
-        events: _events,
-        onEventTapped: _onEventTapped,
-        onRSVP: _onRSVP,
-      );
+      case 0:
+        return EventsTab(
+          events: _events,
+          onEventTapped: (event) => setState(() => _selectedEvent = event),
+          onRSVP: (event, rsvpd) => _onRSVP(event, rsvpd),
+          canRSVP: _isAuthenticated,
+          onRSVPDisabledTap: _promptLoginForRsvp,
+          showListView: _eventsShowListView,
+          onViewModeChanged: (showList) => setState(() => _eventsShowListView = showList),
+          listScrollController: _eventsScrollController,
+        );
+      case 1:
+        return RSVPsTab(
+          events: _myRsvps,
+          onEventTapped: (event) => setState(() => _selectedEvent = event),
+          onRSVP: (event, rsvpd) => _onRSVP(event, rsvpd),
+          showListView: _rsvpsShowListView,
+          onViewModeChanged: (showList) => setState(() => _rsvpsShowListView = showList),
+          listScrollController: _rsvpsScrollController,
+        );
+      case 2:
+        return PostTab(
+          onEventPosted: _onEventPosted,
+        );
+      case 3:
+        final followedIds = _following.map((u) => u.id).toSet();
+        final feedEvents = _events
+            .where((event) => followedIds.contains(event.poster.id))
+            .toList();
+        return FriendsTab(
+          following: _following,
+          followers: _followers,
+          feedEvents: feedEvents,
+          potentialFriends: _potentialFriends,
+          onFollow: _onFollow,
+          onUnfollow: _onUnfollow,
+          onEventTapped: (event) => setState(() => _selectedEvent = event),
+          onRSVP: (event, rsvpd) => _onRSVP(event, rsvpd),
+        );
+      case 4:
+        return AccountTab(onAuthChanged: _refreshData);
+      default:
+        return const SizedBox.shrink();
     }
   }
 
   @override
   Widget build(BuildContext context) {
-    return Material(
-      child: Column(
+    return Scaffold(
+      body: Column(
         children: [
           FomoAppBar(),
           Expanded(child: _buildBody()),
@@ -207,10 +351,10 @@ void main() {
     MaterialApp(
       theme: ThemeData(
         scaffoldBackgroundColor: Colors.black,
-        colorScheme: ColorScheme.dark(),
+        colorScheme: const ColorScheme.dark(),
       ),
-      title: 'My app',
-      home: SafeArea(child: MyScaffold()),
+      title: 'FOMO',
+      home: const SafeArea(child: MyScaffold()),
     ),
   );
 }

@@ -18,6 +18,11 @@ def list_events(
     user_id: str = Depends(get_user_id),
 ):
     events = db.scalars(select(Event).order_by(Event.date.asc())).all()
+    creator_ids = {e.creator_id for e in events if e.creator_id}
+    creators = {
+        u.id: u
+        for u in db.scalars(select(User).where(User.id.in_(creator_ids))).all()
+    } if creator_ids else {}
 
     rsvped_event_ids = set(
         db.scalars(select(Rsvp.event_id).where(Rsvp.user_id == user_id)).all()
@@ -32,7 +37,11 @@ def list_events(
                 location=e.location,
                 attending=e.attending,
                 description=e.description,
+                latitude=e.latitude,
+                longitude=e.longitude,
                 is_rsvpd=e.id in rsvped_event_ids,
+                poster_id=e.creator_id,
+                poster_name=creators[e.creator_id].username if e.creator_id and e.creator_id in creators else "unknown",
             )
             for e in events
         ]
@@ -45,9 +54,9 @@ def create_event(
     db: Session = Depends(get_db),
     user_id: str = Depends(get_user_id),
 ):
-    if not db.get(User, user_id):
-        db.add(User(id=user_id))
-        db.commit()
+    current_user = db.get(User, user_id)
+    if not current_user:
+        raise HTTPException(status_code=404, detail="User not found")
 
     event = Event(
         id=payload.id,
@@ -56,6 +65,9 @@ def create_event(
         location=payload.location,
         attending=1,
         description=payload.description,
+        latitude=payload.latitude,
+        longitude=payload.longitude,
+        creator_id=current_user.id,
     )
     db.add(event)
 
@@ -80,7 +92,11 @@ def create_event(
         location=event.location,
         attending=event.attending,
         description=event.description,
+        latitude=event.latitude,
+        longitude=event.longitude,
         is_rsvpd=True,
+        poster_id=current_user.id,
+        poster_name=current_user.username,
     )
 
 
@@ -93,10 +109,6 @@ def rsvp_event(
     event = db.get(Event, event_id)
     if not event:
         raise HTTPException(status_code=404, detail="Event not found")
-
-    if not db.get(User, user_id):
-        db.add(User(id=user_id))
-        db.commit()
 
     db.add(Rsvp(user_id=user_id, event_id=event_id))
     try:
