@@ -6,7 +6,7 @@ from fastapi import APIRouter, Depends, HTTPException
 
 from ..db import get_db
 from ..deps import get_user_id
-from ..models import Event, Rsvp, User
+from ..models import Event, Rsvp
 from ..schemas import EventCreate, EventsListOut, EventOut
 
 router = APIRouter(prefix="/events", tags=["events"])
@@ -45,10 +45,6 @@ def create_event(
     db: Session = Depends(get_db),
     user_id: str = Depends(get_user_id),
 ):
-    if not db.get(User, user_id):
-        db.add(User(id=user_id))
-        db.commit()
-
     event = Event(
         id=payload.id,
         title=payload.title,
@@ -93,10 +89,6 @@ def rsvp_event(
     event = db.get(Event, event_id)
     if not event:
         raise HTTPException(status_code=404, detail="Event not found")
-
-    if not db.get(User, user_id):
-        db.add(User(id=user_id))
-        db.commit()
 
     db.add(Rsvp(user_id=user_id, event_id=event_id))
     try:
