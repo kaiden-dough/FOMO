@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter/foundation.dart';
+import 'package:google_sign_in/google_sign_in.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -90,6 +91,39 @@ class AuthService {
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove(_tokenKey);
     await prefs.remove(_usernameKey);
+    await GoogleSignIn().signOut();
+  }
+
+  Future<Account> signInWithGoogle() async {
+    final googleUser = await GoogleSignIn(scopes: ['email']).signIn();
+    if (googleUser == null) {
+      throw const AuthException('Google sign-in cancelled.');
+    }
+    final auth = await googleUser.authentication;
+    final idToken = auth.idToken;
+    if (idToken == null || idToken.isEmpty) {
+      throw const AuthException('Missing Google ID token.');
+    }
+
+    final response = await _client.post(
+      Uri.parse('$_baseUrl/auth/google'),
+      headers: {'Content-Type': 'application/json'},
+      body: jsonEncode({'id_token': idToken}),
+    );
+    if (response.statusCode < 200 || response.statusCode >= 300) {
+      throw AuthException(_readErrorMessage(response.body));
+    }
+
+    final data = jsonDecode(response.body) as Map<String, dynamic>;
+    final token = data['token'] as String;
+    final savedUsername = data['username'] as String;
+    final id = data['user_id'] as String;
+
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setString(_tokenKey, token);
+    await prefs.setString(_usernameKey, savedUsername);
+
+    return Account(id: id, username: savedUsername);
   }
 
   Future<String?> getToken() async {

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:geocoding/geocoding.dart';
 import 'package:uuid/uuid.dart';
 import '../data/event.dart';
 import '../data/user.dart';
@@ -56,6 +57,18 @@ class _PostTabState extends State<PostTab> {
 
   Future<void> _submit() async {
     if (_formKey.currentState!.validate() && _selectedDate != null && _selectedTime != null) {
+      double? latitude;
+      double? longitude;
+      try {
+        final results = await locationFromAddress(_locationController.text.trim());
+        if (results.isNotEmpty) {
+          latitude = results.first.latitude;
+          longitude = results.first.longitude;
+        }
+      } catch (_) {
+        // Geocoding can fail for ambiguous addresses; event can still be posted.
+      }
+
       final event = Event(
         id: Uuid().v4(),
         title: _titleController.text,
@@ -70,6 +83,8 @@ class _PostTabState extends State<PostTab> {
         attending: 1, // Assuming the creator is attending
         description: _descriptionController.text,
         poster: currentUser,
+        latitude: latitude,
+        longitude: longitude,
         isRsvpd: true,
       );
       

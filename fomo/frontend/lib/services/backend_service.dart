@@ -46,6 +46,8 @@ class BackendService {
     required DateTime date,
     required String location,
     required String description,
+    double? latitude,
+    double? longitude,
   }) async {
     await _postJson('/events', {
       'id': id,
@@ -53,6 +55,8 @@ class BackendService {
       'date': date.toIso8601String(),
       'location': location,
       'description': description,
+      'latitude': latitude,
+      'longitude': longitude,
     });
   }
 

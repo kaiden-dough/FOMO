@@ -8,6 +8,8 @@ class Event {
   int attending;
   final String description;
   final User poster;
+  final double? latitude;
+  final double? longitude;
   // final String imageUrl;
   bool isRsvpd;
 
@@ -19,6 +21,8 @@ class Event {
     required this.attending,
     required this.description,
     required this.poster,
+    this.latitude,
+    this.longitude,
     // required this.imageUrl,
     this.isRsvpd = false,
   });
@@ -34,6 +38,8 @@ class Event {
       attending: (json['attending'] as num).toInt(),
       description: json['description'] as String,
       poster: User.fromBackend(id: posterId, username: posterName),
+      latitude: (json['latitude'] as num?)?.toDouble(),
+      longitude: (json['longitude'] as num?)?.toDouble(),
       isRsvpd: json['is_rsvpd'] as bool? ?? false,
     );
   }

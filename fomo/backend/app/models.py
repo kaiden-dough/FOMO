@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from datetime import datetime
 
-from sqlalchemy import DateTime, ForeignKey, Integer, String, Text, UniqueConstraint
+from sqlalchemy import DateTime, Float, ForeignKey, Integer, String, Text, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from .db import Base
@@ -13,7 +13,8 @@ class User(Base):
 
     id: Mapped[str] = mapped_column(String, primary_key=True)
     username: Mapped[str] = mapped_column(String, nullable=False, unique=True, index=True)
-    password_hash: Mapped[str] = mapped_column(String, nullable=False)
+    password_hash: Mapped[str | None] = mapped_column(String, nullable=True)
+    google_sub: Mapped[str | None] = mapped_column(String, nullable=True, unique=True, index=True)
     created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=datetime.utcnow)
 
     rsvps: Mapped[list[Rsvp]] = relationship("Rsvp", back_populates="user", cascade="all, delete-orphan")
@@ -80,6 +81,8 @@ class Event(Base):
     location: Mapped[str] = mapped_column(String, nullable=False)
     attending: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     description: Mapped[str] = mapped_column(Text, nullable=False)
+    latitude: Mapped[float | None] = mapped_column(Float, nullable=True)
+    longitude: Mapped[float | None] = mapped_column(Float, nullable=True)
     creator_id: Mapped[str | None] = mapped_column(String, ForeignKey("users.id", ondelete="CASCADE"), nullable=True, index=True)
 
     rsvps: Mapped[list[Rsvp]] = relationship("Rsvp", back_populates="event", cascade="all, delete-orphan")

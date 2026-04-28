@@ -37,6 +37,8 @@ def list_events(
                 location=e.location,
                 attending=e.attending,
                 description=e.description,
+                latitude=e.latitude,
+                longitude=e.longitude,
                 is_rsvpd=e.id in rsvped_event_ids,
                 poster_id=e.creator_id,
                 poster_name=creators[e.creator_id].username if e.creator_id and e.creator_id in creators else "unknown",
@@ -63,6 +65,8 @@ def create_event(
         location=payload.location,
         attending=1,
         description=payload.description,
+        latitude=payload.latitude,
+        longitude=payload.longitude,
         creator_id=current_user.id,
     )
     db.add(event)
@@ -88,6 +92,8 @@ def create_event(
         location=event.location,
         attending=event.attending,
         description=event.description,
+        latitude=event.latitude,
+        longitude=event.longitude,
         is_rsvpd=True,
         poster_id=current_user.id,
         poster_name=current_user.username,

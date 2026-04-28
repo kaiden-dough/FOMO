@@ -164,6 +164,33 @@ class _AccountTabState extends State<AccountTab> {
               onPressed: _loading ? null : _submit,
               child: Text(_isLoginMode ? 'Login' : 'Create Account'),
             ),
+            const SizedBox(height: 8),
+            OutlinedButton.icon(
+              onPressed: _loading
+                  ? null
+                  : () async {
+                      setState(() {
+                        _loading = true;
+                        _error = null;
+                      });
+                      try {
+                        final account = await _authService.signInWithGoogle();
+                        if (!mounted) return;
+                        setState(() => _account = account);
+                        widget.onAuthChanged?.call();
+                      } on AuthException catch (e) {
+                        if (!mounted) return;
+                        setState(() => _error = e.message);
+                      } catch (_) {
+                        if (!mounted) return;
+                        setState(() => _error = 'Google sign-in failed.');
+                      } finally {
+                        if (mounted) setState(() => _loading = false);
+                      }
+                    },
+              icon: const Icon(Icons.login),
+              label: const Text('Sign up / Login with Google'),
+            ),
             TextButton(
               onPressed: _loading
                   ? null

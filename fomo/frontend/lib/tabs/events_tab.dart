@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../data/event.dart';
 import '../items/event_item.dart';
+import '../widgets/events_map.dart';
 
 class EventsTab extends StatefulWidget {
   final List<Event> events;
@@ -37,11 +38,9 @@ class _EventsTabState extends State<EventsTab> {
                       );
                     },
                   )
-                : const Center(
-                    child: Text(
-                      'Map view is not available yet',
-                      style: TextStyle(color: Colors.white),
-                    ),
+                : EventsMap(
+                    events: widget.events,
+                    onEventTapped: widget.onEventTapped,
                   ),
           ),
         ],

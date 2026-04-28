@@ -33,6 +33,7 @@ class _MyScaffoldState extends State<MyScaffold> {
   String? _error;
 
   List<Event> _events = [];
+  List<Event> _myRsvps = [];
   List<User> _following = [];
   List<User> _followers = [];
   List<User> _potentialFriends = [];
@@ -54,6 +55,7 @@ class _MyScaffoldState extends State<MyScaffold> {
         if (!mounted) return;
         setState(() {
           _events = [];
+          _myRsvps = [];
           _following = [];
           _followers = [];
           _potentialFriends = [];
@@ -62,10 +64,12 @@ class _MyScaffoldState extends State<MyScaffold> {
       }
 
       final events = await _backend.fetchEvents();
+      final myRsvps = await _backend.fetchMyRsvps();
       final friends = await _backend.fetchFriends();
       if (!mounted) return;
       setState(() {
         _events = events;
+        _myRsvps = myRsvps;
         _following = friends.following;
         _followers = friends.followers;
         _potentialFriends = friends.suggested;
@@ -87,8 +91,7 @@ class _MyScaffoldState extends State<MyScaffold> {
     final previousRsvp = event.isRsvpd;
     final previousAttending = event.attending;
     setState(() {
-      event.isRsvpd = rsvpd;
-      event.attending = (event.attending + (rsvpd ? 1 : -1)).clamp(0, 1 << 30);
+      _applyEventLocalUpdate(event.id, rsvpd, previousAttending + (rsvpd ? 1 : -1));
     });
 
     try {
@@ -97,15 +100,47 @@ class _MyScaffoldState extends State<MyScaffold> {
       } else {
         await _backend.unrsvp(event.id);
       }
+      await _refreshRsvps();
     } catch (_) {
       if (!mounted) return;
       setState(() {
-        event.isRsvpd = previousRsvp;
-        event.attending = previousAttending;
+        _applyEventLocalUpdate(event.id, previousRsvp, previousAttending);
       });
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('Failed to update RSVP.')),
       );
+    }
+  }
+
+  Future<void> _refreshRsvps() async {
+    final myRsvps = await _backend.fetchMyRsvps();
+    if (!mounted) return;
+    setState(() {
+      _myRsvps = myRsvps;
+      final rsvpIds = _myRsvps.map((e) => e.id).toSet();
+      for (final event in _events) {
+        event.isRsvpd = rsvpIds.contains(event.id);
+      }
+    });
+  }
+
+  void _applyEventLocalUpdate(String eventId, bool rsvpd, int attending) {
+    final safeAttending = attending.clamp(0, 1 << 30);
+    for (final e in _events) {
+      if (e.id == eventId) {
+        e.isRsvpd = rsvpd;
+        e.attending = safeAttending;
+      }
+    }
+    for (final e in _myRsvps) {
+      if (e.id == eventId) {
+        e.isRsvpd = rsvpd;
+        e.attending = safeAttending;
+      }
+    }
+    if (_selectedEvent?.id == eventId) {
+      _selectedEvent!.isRsvpd = rsvpd;
+      _selectedEvent!.attending = safeAttending;
     }
   }
 
@@ -117,6 +152,8 @@ class _MyScaffoldState extends State<MyScaffold> {
         date: event.date,
         location: event.location,
         description: event.description,
+        latitude: event.latitude,
+        longitude: event.longitude,
       );
       await _refreshData();
       if (!mounted) return;
@@ -176,7 +213,7 @@ class _MyScaffoldState extends State<MyScaffold> {
         );
       case 1:
         return RSVPsTab(
-          events: _events.where((element) => element.isRsvpd).toList(),
+          events: _myRsvps,
           onEventTapped: (event) => setState(() => _selectedEvent = event),
           onRSVP: (event, rsvpd) => _onRSVP(event, rsvpd),
         );

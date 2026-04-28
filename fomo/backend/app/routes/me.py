@@ -37,6 +37,8 @@ def my_rsvps(
                 location=e.location,
                 attending=e.attending,
                 description=e.description,
+                latitude=e.latitude,
+                longitude=e.longitude,
                 is_rsvpd=True,
                 poster_id=e.creator_id,
                 poster_name=creators[e.creator_id].username if e.creator_id and e.creator_id in creators else "unknown",
