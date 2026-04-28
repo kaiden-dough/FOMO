@@ -22,6 +22,15 @@ flutter pub get
 flutter run --dart-define=GOOGLE_WEB_CLIENT_ID=YOUR_WEB_CLIENT_ID.apps.googleusercontent.com
 ```
 
+### Frontend (safe key injection for web)
+
+Use the helper script so your Maps key is injected only for the run and then removed from tracked files:
+
+```powershell
+cd .\fomo\frontend
+.\scripts\run_web.ps1 -MapsApiKey "YOUR_GOOGLE_MAPS_API_KEY" -GoogleWebClientId "YOUR_WEB_CLIENT_ID.apps.googleusercontent.com"
+```
+
 ### Required setup
 
 - In `frontend/web/index.html`, replace `YOUR_GOOGLE_MAPS_API_KEY` with your browser maps key.
