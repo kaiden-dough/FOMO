@@ -48,7 +48,7 @@ class AuthService {
   }
 
   Future<Account?> getCurrentAccount() async {
-    final token = await _getToken();
+    final token = await getToken();
     if (token == null) return null;
 
     final response = await _client.get(
@@ -92,7 +92,7 @@ class AuthService {
     await prefs.remove(_usernameKey);
   }
 
-  Future<String?> _getToken() async {
+  Future<String?> getToken() async {
     final prefs = await SharedPreferences.getInstance();
     return prefs.getString(_tokenKey);
   }

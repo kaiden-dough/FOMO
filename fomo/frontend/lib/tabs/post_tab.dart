@@ -5,7 +5,7 @@ import '../data/user.dart';
 
 class PostTab extends StatefulWidget {
 
-  final Function(Event) onEventPosted;
+  final Future<void> Function(Event) onEventPosted;
 
   const PostTab({super.key, required this.onEventPosted});
 
@@ -54,7 +54,7 @@ class _PostTabState extends State<PostTab> {
     if (picked != null) setState(() => _selectedTime = picked);
   }
 
-  void _submit() {
+  Future<void> _submit() async {
     if (_formKey.currentState!.validate() && _selectedDate != null && _selectedTime != null) {
       final event = Event(
         id: Uuid().v4(),
@@ -73,11 +73,7 @@ class _PostTabState extends State<PostTab> {
         isRsvpd: true,
       );
       
-      widget.onEventPosted(event);   // database call goes here to save to events and account event
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Event posted')),
-      );
+      await widget.onEventPosted(event);
 
       _titleController.clear();
       _locationController.clear();
@@ -165,7 +161,7 @@ class _PostTabState extends State<PostTab> {
               SizedBox(
                 width: double.infinity,
                 child: ElevatedButton(
-                  onPressed: _submit,
+                  onPressed: () => _submit(),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.pinkAccent,
                     foregroundColor: Colors.white,

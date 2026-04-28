@@ -3,7 +3,9 @@ import 'package:flutter/material.dart';
 import '../services/auth_service.dart';
 
 class AccountTab extends StatefulWidget {
-  const AccountTab({super.key});
+  final VoidCallback? onAuthChanged;
+
+  const AccountTab({super.key, this.onAuthChanged});
 
   @override
   State<AccountTab> createState() => _AccountTabState();
@@ -78,6 +80,7 @@ class _AccountTabState extends State<AccountTab> {
         _account = account;
         _passwordController.clear();
       });
+      widget.onAuthChanged?.call();
     } on AuthException catch (e) {
       if (!mounted) return;
       setState(() => _error = e.message);
@@ -100,6 +103,7 @@ class _AccountTabState extends State<AccountTab> {
       _passwordController.clear();
       _loading = false;
     });
+    widget.onAuthChanged?.call();
   }
 
   @override

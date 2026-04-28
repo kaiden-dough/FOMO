@@ -25,6 +25,17 @@ class AccountOut(BaseModel):
     created_at: datetime
 
 
+class FriendOut(BaseModel):
+    id: str
+    username: str
+
+
+class FriendsOut(BaseModel):
+    following: list[FriendOut]
+    followers: list[FriendOut]
+    suggested: list[FriendOut]
+
+
 class EventCreate(BaseModel):
     id: str = Field(min_length=1)
     title: str = Field(min_length=1)
@@ -41,6 +52,8 @@ class EventOut(BaseModel):
     attending: int
     description: str
     is_rsvpd: bool = False
+    poster_id: str | None = None
+    poster_name: str | None = None
 
 
 class EventsListOut(BaseModel):

@@ -5,7 +5,7 @@ from fastapi import APIRouter, Depends
 
 from ..db import get_db
 from ..deps import get_user_id
-from ..models import Event, Rsvp
+from ..models import Event, Rsvp, User
 from ..schemas import EventsListOut, EventOut
 
 router = APIRouter(prefix="/me", tags=["me"])
@@ -22,6 +22,11 @@ def my_rsvps(
         .where(Rsvp.user_id == user_id)
         .order_by(Event.date.asc())
     ).all()
+    creator_ids = {e.creator_id for e in events if e.creator_id}
+    creators = {
+        u.id: u
+        for u in db.scalars(select(User).where(User.id.in_(creator_ids))).all()
+    } if creator_ids else {}
 
     return {
         "events": [
@@ -33,6 +38,8 @@ def my_rsvps(
                 attending=e.attending,
                 description=e.description,
                 is_rsvpd=True,
+                poster_id=e.creator_id,
+                poster_name=creators[e.creator_id].username if e.creator_id and e.creator_id in creators else "unknown",
             )
             for e in events
         ]

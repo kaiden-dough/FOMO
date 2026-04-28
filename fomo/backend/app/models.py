@@ -22,6 +22,18 @@ class User(Base):
         back_populates="user",
         cascade="all, delete-orphan",
     )
+    following: Mapped[list[Follow]] = relationship(
+        "Follow",
+        foreign_keys="Follow.follower_id",
+        back_populates="follower",
+        cascade="all, delete-orphan",
+    )
+    followers: Mapped[list[Follow]] = relationship(
+        "Follow",
+        foreign_keys="Follow.followed_id",
+        back_populates="followed",
+        cascade="all, delete-orphan",
+    )
 
 
 class UserSession(Base):
@@ -34,6 +46,31 @@ class UserSession(Base):
     user: Mapped[User] = relationship("User", back_populates="sessions")
 
 
+class Follow(Base):
+    __tablename__ = "follows"
+    __table_args__ = (
+        UniqueConstraint("follower_id", "followed_id", name="uq_follow_pair"),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    follower_id: Mapped[str] = mapped_column(
+        String,
+        ForeignKey("users.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    followed_id: Mapped[str] = mapped_column(
+        String,
+        ForeignKey("users.id", ondelete="CASCADE"),
+        nullable=False,
+        index=True,
+    )
+    created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, default=datetime.utcnow)
+
+    follower: Mapped[User] = relationship("User", foreign_keys=[follower_id], back_populates="following")
+    followed: Mapped[User] = relationship("User", foreign_keys=[followed_id], back_populates="followers")
+
+
 class Event(Base):
     __tablename__ = "events"
 
@@ -43,8 +80,10 @@ class Event(Base):
     location: Mapped[str] = mapped_column(String, nullable=False)
     attending: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     description: Mapped[str] = mapped_column(Text, nullable=False)
+    creator_id: Mapped[str | None] = mapped_column(String, ForeignKey("users.id", ondelete="CASCADE"), nullable=True, index=True)
 
     rsvps: Mapped[list[Rsvp]] = relationship("Rsvp", back_populates="event", cascade="all, delete-orphan")
+    creator: Mapped[User] = relationship("User")
 
 
 class Rsvp(Base):
