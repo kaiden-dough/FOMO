@@ -4,7 +4,7 @@ on:
   push:
     branches: ["main"]
     paths:
-      - "frontend/**"
+      - "fomo/frontend/**"
       - ".github/workflows/deploy-frontend-vercel.yml"
   workflow_dispatch:
 
@@ -13,7 +13,7 @@ jobs:
     runs-on: ubuntu-latest
     defaults:
       run:
-        working-directory: frontend
+        working-directory: fomo/frontend
 
     steps:
       - name: Checkout
