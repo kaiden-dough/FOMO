@@ -64,10 +64,11 @@ class _MyScaffoldState extends State<MyScaffold> {
     try {
       final account = await _auth.getCurrentAccount();
       if (account == null) {
+        final events = await _backend.fetchEvents();
         if (!mounted) return;
         setState(() {
           _isAuthenticated = false;
-          _events = [];
+          _events = events;
           _myRsvps = [];
           _following = [];
           _followers = [];

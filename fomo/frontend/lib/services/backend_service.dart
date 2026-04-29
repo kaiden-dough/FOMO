@@ -26,7 +26,7 @@ class BackendService {
   }
 
   Future<List<Event>> fetchEvents() async {
-    final data = await _getJson('/events');
+    final data = await _getJsonPublic('/events');
     final events = (data['events'] as List<dynamic>)
         .map((e) => Event.fromBackend(e as Map<String, dynamic>))
         .toList();
@@ -98,6 +98,15 @@ class BackendService {
     final response = await _client.get(
       Uri.parse('$_baseUrl$path'),
       headers: _headers(token),
+    );
+    return _decodeOrThrow(response);
+  }
+
+  Future<Map<String, dynamic>> _getJsonPublic(String path) async {
+    final token = await _authService.getToken();
+    final response = await _client.get(
+      Uri.parse('$_baseUrl$path'),
+      headers: token == null ? const {} : _headers(token),
     );
     return _decodeOrThrow(response);
   }

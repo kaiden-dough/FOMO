@@ -5,7 +5,7 @@ from sqlalchemy.orm import Session
 from fastapi import APIRouter, Depends, HTTPException
 
 from ..db import get_db
-from ..deps import get_user_id
+from ..deps import get_optional_user_id, get_user_id
 from ..models import Event, Rsvp, User
 from ..schemas import EventCreate, EventsListOut, EventOut
 
@@ -15,7 +15,7 @@ router = APIRouter(prefix="/events", tags=["events"])
 @router.get("", response_model=EventsListOut)
 def list_events(
     db: Session = Depends(get_db),
-    user_id: str = Depends(get_user_id),
+    user_id: str | None = Depends(get_optional_user_id),
 ):
     events = db.scalars(select(Event).order_by(Event.date.asc())).all()
     creator_ids = {e.creator_id for e in events if e.creator_id}
@@ -24,8 +24,10 @@ def list_events(
         for u in db.scalars(select(User).where(User.id.in_(creator_ids))).all()
     } if creator_ids else {}
 
-    rsvped_event_ids = set(
-        db.scalars(select(Rsvp.event_id).where(Rsvp.user_id == user_id)).all()
+    rsvped_event_ids = (
+        set(db.scalars(select(Rsvp.event_id).where(Rsvp.user_id == user_id)).all())
+        if user_id
+        else set()
     )
 
     return {
