@@ -39,12 +39,13 @@ Deploys from the Vercel dashboard by connecting this Git repository (no GitHub A
 2. **Environment variables** (Project → Settings → Environment Variables), for Production and Preview as you prefer:
    - `BACKEND_URL` — your deployed API base URL (for example `https://your-api.onrender.com`)
    - `GOOGLE_WEB_CLIENT_ID` — OAuth web client ID used by `google_sign_in` on web
-3. Each deploy runs `scripts/vercel-build.sh`: installs Flutter stable, then `flutter build web` with those defines. Output is `build/web` (configured in `vercel.json`).
+   - `GOOGLE_MAPS_API_KEY` — browser Maps JavaScript API key
+3. Each deploy runs `scripts/vercel-build.sh`: installs Flutter stable, injects `GOOGLE_MAPS_API_KEY` into `web/index.html`, then runs `flutter build web`. Output is `build/web` (configured in `vercel.json`).
 
 First builds can take several minutes while Flutter is cloned and cached.
 
 ### Required setup (same as before)
 
-- In `frontend/web/index.html`, replace `YOUR_GOOGLE_MAPS_API_KEY` with your browser maps key.
+- Keep `frontend/web/index.html` with `YOUR_GOOGLE_MAPS_API_KEY` placeholder; Vercel replaces it from `GOOGLE_MAPS_API_KEY` during build.
 - In `frontend/android/app/src/main/AndroidManifest.xml`, replace `YOUR_GOOGLE_MAPS_API_KEY` for Android map support.
 - In `backend/.env`, set `GOOGLE_CLIENT_ID` to your OAuth web client ID (recommended).
