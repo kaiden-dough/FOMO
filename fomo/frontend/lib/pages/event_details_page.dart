@@ -36,7 +36,10 @@ class EventDetailsPage extends StatelessWidget {
               children: [
                 Text(event.title, style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold)),
                 const SizedBox(height: 8),
-                Text(DateFormat('MMM d • h:mm a').format(event.date), style: TextStyle(color: Colors.grey)),
+                Text(
+                  '${DateFormat('MMM d • h:mm a').format(event.startTime)} - ${DateFormat('h:mm a').format(event.endTime)}',
+                  style: TextStyle(color: Colors.grey),
+                ),
                 const SizedBox(height: 8),
                 Text(event.location, style: TextStyle(color: Colors.grey)),
                 const SizedBox(height: 8),

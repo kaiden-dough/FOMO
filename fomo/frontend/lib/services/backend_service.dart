@@ -43,7 +43,8 @@ class BackendService {
   Future<void> postEvent({
     required String id,
     required String title,
-    required DateTime date,
+    required DateTime startTime,
+    required DateTime endTime,
     required String location,
     required String description,
     double? latitude,
@@ -52,7 +53,8 @@ class BackendService {
     await _postJson('/events', {
       'id': id,
       'title': title,
-      'date': date.toIso8601String(),
+      'start_time': startTime.toIso8601String(),
+      'end_time': endTime.toIso8601String(),
       'location': location,
       'description': description,
       'latitude': latitude,

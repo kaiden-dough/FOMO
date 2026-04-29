@@ -1,3 +1,5 @@
+from datetime import datetime
+
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
@@ -16,13 +18,15 @@ def my_rsvps(
     db: Session = Depends(get_db),
     user_id: str = Depends(get_user_id),
 ):
+    now = datetime.utcnow()
     events = db.scalars(
         select(Event)
         .join(Rsvp, Rsvp.event_id == Event.id)
         .where(Rsvp.user_id == user_id)
         .order_by(Event.date.asc())
     ).all()
-    creator_ids = {e.creator_id for e in events if e.creator_id}
+    active_events = [e for e in events if (e.end_time or e.date) >= now]
+    creator_ids = {e.creator_id for e in active_events if e.creator_id}
     creators = {
         u.id: u
         for u in db.scalars(select(User).where(User.id.in_(creator_ids))).all()
@@ -33,7 +37,9 @@ def my_rsvps(
             EventOut(
                 id=e.id,
                 title=e.title,
-                date=e.date,
+                date=e.start_time or e.date,
+                start_time=e.start_time or e.date,
+                end_time=e.end_time or e.date,
                 location=e.location,
                 attending=e.attending,
                 description=e.description,
@@ -43,6 +49,6 @@ def my_rsvps(
                 poster_id=e.creator_id,
                 poster_name=creators[e.creator_id].username if e.creator_id and e.creator_id in creators else "unknown",
             )
-            for e in events
+            for e in active_events
         ]
     }

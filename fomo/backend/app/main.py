@@ -2,7 +2,7 @@ from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
 from .config import CORS_ORIGINS
-from .db import Base, engine
+from .db import Base, engine, ensure_event_time_columns
 from .routes import auth, events, friends, me
 
 app = FastAPI(title="FOMO Backend")
@@ -16,6 +16,7 @@ app.add_middleware(
 )
 
 Base.metadata.create_all(bind=engine)
+ensure_event_time_columns()
 
 app.include_router(events.router)
 app.include_router(me.router)

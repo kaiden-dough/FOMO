@@ -24,7 +24,8 @@ class _PostTabState extends State<PostTab> {
   final _descriptionController = TextEditingController();
   final _locationFocusNode = FocusNode();
   DateTime? _selectedDate;
-  TimeOfDay? _selectedTime;
+  TimeOfDay? _selectedStartTime;
+  TimeOfDay? _selectedEndTime;
   bool _resolvingAddress = false;
   bool _loadingSuggestions = false;
   Timer? _locationDebounce;
@@ -111,14 +112,37 @@ class _PostTabState extends State<PostTab> {
   Future<void> _pickTime() async {
     final picked = await showTimePicker(
       context: context,
-      initialTime: TimeOfDay.now(),
+      initialTime: _selectedStartTime ?? TimeOfDay.now(),
     );
-    if (picked != null) setState(() => _selectedTime = picked);
+    if (picked != null) setState(() => _selectedStartTime = picked);
   }
 
   Future<void> _submit() async {
     if (_resolvingAddress) return;
-    if (_formKey.currentState!.validate() && _selectedDate != null && _selectedTime != null) {
+    if (_formKey.currentState!.validate() &&
+        _selectedDate != null &&
+        _selectedStartTime != null &&
+        _selectedEndTime != null) {
+      final startDateTime = DateTime(
+        _selectedDate!.year,
+        _selectedDate!.month,
+        _selectedDate!.day,
+        _selectedStartTime!.hour,
+        _selectedStartTime!.minute,
+      );
+      final endDateTime = DateTime(
+        _selectedDate!.year,
+        _selectedDate!.month,
+        _selectedDate!.day,
+        _selectedEndTime!.hour,
+        _selectedEndTime!.minute,
+      );
+      if (!endDateTime.isAfter(startDateTime)) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(content: Text('End time must be after start time')),
+        );
+        return;
+      }
       setState(() => _resolvingAddress = true);
       double? latitude;
       double? longitude;
@@ -152,13 +176,8 @@ class _PostTabState extends State<PostTab> {
       final event = Event(
         id: Uuid().v4(),
         title: _titleController.text,
-        date: DateTime(
-          _selectedDate!.year,
-          _selectedDate!.month,
-          _selectedDate!.day,
-          _selectedTime!.hour,
-          _selectedTime!.minute,
-        ),
+        startTime: startDateTime,
+        endTime: endDateTime,
         location: _locationController.text,
         attending: 1, // Assuming the creator is attending
         description: _descriptionController.text,
@@ -176,13 +195,16 @@ class _PostTabState extends State<PostTab> {
       _descriptionController.clear();
       setState(() {
         _selectedDate = null;
-        _selectedTime = null;
+        _selectedStartTime = null;
+        _selectedEndTime = null;
         _selectedSuggestion = null;
         _resolvingAddress = false;
       });
-    } else if (_selectedDate == null || _selectedTime == null) {
+    } else if (_selectedDate == null ||
+        _selectedStartTime == null ||
+        _selectedEndTime == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please select a date and time')),
+        const SnackBar(content: Text('Please select date, start time, and end time')),
       );
     } else {
       setState(() => _resolvingAddress = false);
@@ -287,9 +309,27 @@ class _PostTabState extends State<PostTab> {
                     child: OutlinedButton.icon(
                       onPressed: _pickTime,
                       icon: const Icon(Icons.access_time),
-                      label: Text(_selectedTime == null
-                          ? 'Pick a Time'
-                          : _selectedTime!.format(context)),
+                      label: Text(_selectedStartTime == null
+                          ? 'Start Time'
+                          : _selectedStartTime!.format(context)),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: OutlinedButton.icon(
+                      onPressed: () async {
+                        final picked = await showTimePicker(
+                          context: context,
+                          initialTime: _selectedEndTime ?? TimeOfDay.now(),
+                        );
+                        if (picked != null) {
+                          setState(() => _selectedEndTime = picked);
+                        }
+                      },
+                      icon: const Icon(Icons.schedule),
+                      label: Text(_selectedEndTime == null
+                          ? 'End Time'
+                          : _selectedEndTime!.format(context)),
                     ),
                   ),
                 ],

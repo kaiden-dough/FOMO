@@ -43,6 +43,11 @@ class _MyScaffoldState extends State<MyScaffold> {
   List<User> _followers = [];
   List<User> _potentialFriends = [];
 
+  List<Event> _activeEventsOnly(List<Event> source) {
+    final now = DateTime.now();
+    return source.where((event) => event.endTime.isAfter(now)).toList();
+  }
+
   @override
   void initState() {
     super.initState();
@@ -64,7 +69,7 @@ class _MyScaffoldState extends State<MyScaffold> {
     try {
       final account = await _auth.getCurrentAccount();
       if (account == null) {
-        final events = await _backend.fetchEvents();
+        final events = _activeEventsOnly(await _backend.fetchEvents());
         if (!mounted) return;
         setState(() {
           _isAuthenticated = false;
@@ -77,8 +82,8 @@ class _MyScaffoldState extends State<MyScaffold> {
         return;
       }
 
-      final events = await _backend.fetchEvents();
-      final myRsvps = await _backend.fetchMyRsvps();
+      final events = _activeEventsOnly(await _backend.fetchEvents());
+      final myRsvps = _activeEventsOnly(await _backend.fetchMyRsvps());
       final friends = await _backend.fetchFriends();
       if (!mounted) return;
       setState(() {
@@ -144,7 +149,7 @@ class _MyScaffoldState extends State<MyScaffold> {
   }
 
   Future<void> _refreshRsvps() async {
-    final myRsvps = await _backend.fetchMyRsvps();
+    final myRsvps = _activeEventsOnly(await _backend.fetchMyRsvps());
     if (!mounted) return;
     setState(() {
       _myRsvps = myRsvps;
@@ -188,7 +193,8 @@ class _MyScaffoldState extends State<MyScaffold> {
       await _backend.postEvent(
         id: event.id,
         title: event.title,
-        date: event.date,
+        startTime: event.startTime,
+        endTime: event.endTime,
         location: event.location,
         description: event.description,
         latitude: event.latitude,

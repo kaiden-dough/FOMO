@@ -45,7 +45,10 @@ class EventItem extends StatelessWidget {
               ),
               const SizedBox(height: 8),
               Text(event.title, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold)),
-              Text(DateFormat('MMM d, h:mm a').format(event.date), style: const TextStyle(color: Colors.grey)),
+              Text(
+                '${DateFormat('MMM d, h:mm a').format(event.startTime)} - ${DateFormat('h:mm a').format(event.endTime)}',
+                style: const TextStyle(color: Colors.grey),
+              ),
               Text(event.location, style: const TextStyle(color: Colors.grey)),
               Text(event.description, style: const TextStyle(color: Colors.grey)),
               Text('${event.attending} attending', style: const TextStyle(color: Colors.grey)),

@@ -77,6 +77,8 @@ class Event(Base):
 
     id: Mapped[str] = mapped_column(String, primary_key=True)
     title: Mapped[str] = mapped_column(String, nullable=False)
+    start_time: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
+    end_time: Mapped[datetime | None] = mapped_column(DateTime, nullable=True)
     date: Mapped[datetime] = mapped_column(DateTime, nullable=False)
     location: Mapped[str] = mapped_column(String, nullable=False)
     attending: Mapped[int] = mapped_column(Integer, nullable=False, default=0)

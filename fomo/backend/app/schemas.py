@@ -1,6 +1,6 @@
-from datetime import datetime
+from datetime import datetime, timedelta
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 
 
 class AccountRegister(BaseModel):
@@ -44,17 +44,34 @@ class FriendsOut(BaseModel):
 class EventCreate(BaseModel):
     id: str = Field(min_length=1)
     title: str = Field(min_length=1)
-    date: datetime
+    start_time: datetime | None = None
+    end_time: datetime | None = None
+    # Legacy compatibility for older clients.
+    date: datetime | None = None
     location: str = Field(min_length=1)
     description: str = Field(min_length=1)
     latitude: float | None = None
     longitude: float | None = None
+
+    @model_validator(mode="after")
+    def validate_times(self) -> "EventCreate":
+        start = self.start_time or self.date
+        if start is None:
+            raise ValueError("start_time is required")
+        self.start_time = start
+        if self.end_time is None:
+            self.end_time = start + timedelta(hours=2)
+        if self.end_time < self.start_time:
+            raise ValueError("end_time must be after start_time")
+        return self
 
 
 class EventOut(BaseModel):
     id: str
     title: str
     date: datetime
+    start_time: datetime
+    end_time: datetime
     location: str
     attending: int
     description: str
