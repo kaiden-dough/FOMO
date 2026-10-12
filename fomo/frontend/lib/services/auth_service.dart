@@ -148,7 +148,7 @@ class AuthService {
         sb.OAuthProvider.google,
         queryParams: const {'prompt': 'select_account'},
         redirectTo: kIsWeb
-            ? Uri.base.replace(query: '', fragment: '').toString()
+            ? '${Uri.base.origin}/'
             : _mobileRedirect,
       );
       if (!started) throw const AuthException('Could not open Google sign-in.');
