@@ -18,6 +18,11 @@ class GoogleAuthIn(BaseModel):
     access_token: str | None = None
 
 
+class SupabaseAuthIn(BaseModel):
+    access_token: str = Field(min_length=1, max_length=16384)
+    link_account: bool = False
+
+
 class AuthOut(BaseModel):
     token: str
     user_id: str

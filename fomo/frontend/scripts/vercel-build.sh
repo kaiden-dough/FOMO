@@ -2,8 +2,13 @@
 # Vercel runs this on Linux. Installs Flutter (stable) then builds web.
 set -euo pipefail
 
-if [[ -z "${BACKEND_URL:-}" || -z "${GOOGLE_WEB_CLIENT_ID:-}" || -z "${GOOGLE_MAPS_API_KEY:-}" ]]; then
-  echo "Missing env vars: set BACKEND_URL, GOOGLE_WEB_CLIENT_ID, and GOOGLE_MAPS_API_KEY in Vercel → Project → Settings → Environment Variables (Production + Preview as needed)."
+if [[ -z "${BACKEND_URL:-}" || -z "${GOOGLE_MAPS_API_KEY:-}" ]]; then
+  echo "Missing env vars: set BACKEND_URL and GOOGLE_MAPS_API_KEY in Vercel → Project → Settings → Environment Variables (Production + Preview as needed)."
+  exit 1
+fi
+
+if [[ -n "${SUPABASE_URL:-}" && -z "${SUPABASE_PUBLISHABLE_KEY:-}" ]] || [[ -z "${SUPABASE_URL:-}" && -n "${SUPABASE_PUBLISHABLE_KEY:-}" ]]; then
+  echo "Set both SUPABASE_URL and SUPABASE_PUBLISHABLE_KEY to enable Google sign-in."
   exit 1
 fi
 
@@ -36,4 +41,5 @@ PY
 flutter pub get
 flutter build web --release \
   --dart-define=BACKEND_URL="${BACKEND_URL}" \
-  --dart-define=GOOGLE_WEB_CLIENT_ID="${GOOGLE_WEB_CLIENT_ID}"
+  --dart-define=SUPABASE_URL="${SUPABASE_URL:-}" \
+  --dart-define=SUPABASE_PUBLISHABLE_KEY="${SUPABASE_PUBLISHABLE_KEY:-}"

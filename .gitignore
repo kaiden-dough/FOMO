@@ -1,0 +1,6 @@
+.local-backups/
+.venv/
+.venv313/
+*.db
+__pycache__/
+*.pyc

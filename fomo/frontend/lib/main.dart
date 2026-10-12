@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:uuid/uuid.dart';
+import 'package:supabase_flutter/supabase_flutter.dart' as sb;
 
 import 'data/event.dart';
 import 'data/user.dart';
@@ -17,7 +18,8 @@ import 'widgets/nav_bar.dart';
 final uuid = Uuid();
 
 class MyScaffold extends StatefulWidget {
-  const MyScaffold({super.key});
+  final bool showAccount;
+  const MyScaffold({super.key, this.showAccount = false});
 
   @override
   State<MyScaffold> createState() => _MyScaffoldState();
@@ -51,7 +53,12 @@ class _MyScaffoldState extends State<MyScaffold> {
   @override
   void initState() {
     super.initState();
-    _refreshData();
+    if (widget.showAccount) {
+      _selectedIndex = 4;
+      _loading = false;
+    } else {
+      _refreshData();
+    }
   }
 
   @override
@@ -119,7 +126,11 @@ class _MyScaffoldState extends State<MyScaffold> {
     final previousRsvp = event.isRsvpd;
     final previousAttending = event.attending;
     setState(() {
-      _applyEventLocalUpdate(event.id, rsvpd, previousAttending + (rsvpd ? 1 : -1));
+      _applyEventLocalUpdate(
+        event.id,
+        rsvpd,
+        previousAttending + (rsvpd ? 1 : -1),
+      );
     });
 
     try {
@@ -134,17 +145,17 @@ class _MyScaffoldState extends State<MyScaffold> {
       setState(() {
         _applyEventLocalUpdate(event.id, previousRsvp, previousAttending);
       });
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Failed to update RSVP.')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Failed to update RSVP.')));
     }
   }
 
   void _promptLoginForRsvp() {
     if (!mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(content: Text('Login required to RSVP.')),
-    );
+    ScaffoldMessenger.of(
+      context,
+    ).showSnackBar(const SnackBar(content: Text('Login required to RSVP.')));
     setState(() => _selectedIndex = 4);
   }
 
@@ -202,14 +213,14 @@ class _MyScaffoldState extends State<MyScaffold> {
       );
       await _refreshData();
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Event posted')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Event posted')));
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Failed to post event: $e')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Failed to post event: $e')));
     }
   }
 
@@ -295,7 +306,8 @@ class _MyScaffoldState extends State<MyScaffold> {
           canRSVP: _isAuthenticated,
           onRSVPDisabledTap: _promptLoginForRsvp,
           showListView: _eventsShowListView,
-          onViewModeChanged: (showList) => setState(() => _eventsShowListView = showList),
+          onViewModeChanged: (showList) =>
+              setState(() => _eventsShowListView = showList),
           listScrollController: _eventsScrollController,
         );
       case 1:
@@ -304,13 +316,12 @@ class _MyScaffoldState extends State<MyScaffold> {
           onEventTapped: (event) => setState(() => _selectedEvent = event),
           onRSVP: (event, rsvpd) => _onRSVP(event, rsvpd),
           showListView: _rsvpsShowListView,
-          onViewModeChanged: (showList) => setState(() => _rsvpsShowListView = showList),
+          onViewModeChanged: (showList) =>
+              setState(() => _rsvpsShowListView = showList),
           listScrollController: _rsvpsScrollController,
         );
       case 2:
-        return PostTab(
-          onEventPosted: _onEventPosted,
-        );
+        return PostTab(onEventPosted: _onEventPosted);
       case 3:
         final followedIds = _following.map((u) => u.id).toSet();
         final feedEvents = _events
@@ -353,7 +364,18 @@ class _MyScaffoldState extends State<MyScaffold> {
   }
 }
 
-void main() {
+Future<void> main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  if (AuthService.googleConfigured) {
+    await sb.Supabase.initialize(
+      url: AuthService.supabaseUrl,
+      publishableKey: AuthService.supabaseKey,
+      authOptions: const sb.FlutterAuthClientOptions(
+        authFlowType: sb.AuthFlowType.pkce,
+      ),
+    );
+  }
+  final showAccount = await AuthService.hasPendingGoogleSignIn();
   runApp(
     MaterialApp(
       theme: ThemeData(
@@ -361,7 +383,7 @@ void main() {
         colorScheme: const ColorScheme.dark(),
       ),
       title: 'FOMO',
-      home: const SafeArea(child: MyScaffold()),
+      home: SafeArea(child: MyScaffold(showAccount: showAccount)),
     ),
   );
 }

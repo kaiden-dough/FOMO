@@ -2,7 +2,7 @@ import 'dart:convert';
 import 'dart:io';
 
 import 'package:flutter/foundation.dart';
-import 'package:google_sign_in/google_sign_in.dart';
+import 'package:supabase_flutter/supabase_flutter.dart' as sb;
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 
@@ -16,11 +16,7 @@ class Account {
   final String username;
   final DateTime? createdAt;
 
-  const Account({
-    required this.id,
-    required this.username,
-    this.createdAt,
-  });
+  const Account({required this.id, required this.username, this.createdAt});
 }
 
 class AuthService {
@@ -32,10 +28,18 @@ class AuthService {
     'BACKEND_URL',
     defaultValue: '',
   );
-  static const _googleWebClientId = String.fromEnvironment(
-    'GOOGLE_WEB_CLIENT_ID',
-    defaultValue: '',
-  );
+  static const supabaseUrl = String.fromEnvironment('SUPABASE_URL');
+  static const supabaseKey = String.fromEnvironment('SUPABASE_PUBLISHABLE_KEY');
+  static const _mobileRedirect = String.fromEnvironment('AUTH_REDIRECT_URL');
+  static const _linkPendingKey = 'auth_google_link_pending';
+  static const _oauthPendingKey = 'auth_google_pending';
+  static bool get googleConfigured =>
+      supabaseUrl.isNotEmpty && supabaseKey.isNotEmpty;
+
+  static Future<bool> hasPendingGoogleSignIn() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getBool(_oauthPendingKey) ?? false;
+  }
 
   final http.Client _client;
 
@@ -91,71 +95,104 @@ class AuthService {
     return _authenticate('/auth/login', username, password);
   }
 
+  Future<Map<String, dynamic>> getAuthConfig() async {
+    final response = await _client.get(Uri.parse('$_baseUrl/auth/config'));
+    if (response.statusCode != 200) {
+      throw const AuthException(
+        'Could not load sign-in options. Please try again.',
+      );
+    }
+    return jsonDecode(response.body) as Map<String, dynamic>;
+  }
+
   Future<void> logout() async {
+    final token = await getToken();
+    if (token != null) {
+      final response = await _client.post(
+        Uri.parse('$_baseUrl/auth/logout'),
+        headers: _authHeaders(token),
+      );
+      if (response.statusCode != 204 && response.statusCode != 401) {
+        throw const AuthException('Could not sign out. Please try again.');
+      }
+    }
     final prefs = await SharedPreferences.getInstance();
     await prefs.remove(_tokenKey);
     await prefs.remove(_usernameKey);
-    await GoogleSignIn().signOut();
+    await prefs.remove(_linkPendingKey);
+    await prefs.remove(_oauthPendingKey);
+    if (googleConfigured) {
+      await sb.Supabase.instance.client.auth.signOut(
+        scope: sb.SignOutScope.local,
+      );
+    }
   }
 
-  Future<Account> signInWithGoogle() async {
-    final googleSignIn = GoogleSignIn(
-      scopes: const ['email'],
-      clientId: kIsWeb && _googleWebClientId.isNotEmpty ? _googleWebClientId : null,
+  Future<void> signInWithGoogle({bool linkAccount = false}) async {
+    if (!googleConfigured) {
+      throw const AuthException('Google sign-in is not available yet.');
+    }
+    if (!kIsWeb && _mobileRedirect.isEmpty) {
+      throw const AuthException(
+        'Google sign-in is not configured for this device yet.',
+      );
+    }
+    await sb.Supabase.instance.client.auth.signOut(
+      scope: sb.SignOutScope.local,
     );
-    if (kIsWeb && _googleWebClientId.isEmpty) {
-      throw const AuthException(
-        'Missing GOOGLE_WEB_CLIENT_ID. Run Flutter with --dart-define=GOOGLE_WEB_CLIENT_ID=...',
-      );
-    }
-
-    GoogleSignInAccount? googleUser = await googleSignIn.signInSilently();
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_linkPendingKey, linkAccount);
+    await prefs.setBool(_oauthPendingKey, true);
     try {
-      googleUser ??= await googleSignIn.signIn();
-    } catch (e) {
-      final message = e.toString();
-      if (message.contains('popup_closed')) {
-        throw const AuthException(
-          'Google popup was closed or blocked. Allow popups and try again.',
-        );
-      }
-      throw AuthException('Google sign-in error: $message');
-    }
-    if (googleUser == null) {
-      throw const AuthException('Google sign-in cancelled.');
-    }
-    final auth = await googleUser.authentication;
-    final idToken = auth.idToken;
-    final accessToken = auth.accessToken;
-    if ((idToken == null || idToken.isEmpty) &&
-        (accessToken == null || accessToken.isEmpty)) {
-      throw const AuthException(
-        'Google token not returned. Try again and keep the popup open.',
+      final started = await sb.Supabase.instance.client.auth.signInWithOAuth(
+        sb.OAuthProvider.google,
+        queryParams: const {'prompt': 'select_account'},
+        redirectTo: kIsWeb
+            ? Uri.base.replace(query: '', fragment: '').toString()
+            : _mobileRedirect,
       );
+      if (!started) throw const AuthException('Could not open Google sign-in.');
+    } catch (_) {
+      await prefs.remove(_oauthPendingKey);
+      await prefs.remove(_linkPendingKey);
+      rethrow;
     }
+  }
 
+  Future<Account?> completeGoogleSignIn() async {
+    if (!googleConfigured) return null;
+    final session = sb.Supabase.instance.client.auth.currentSession;
+    final prefs = await SharedPreferences.getInstance();
+    if (session == null || prefs.getBool(_oauthPendingKey) != true) return null;
+    final link = prefs.getBool(_linkPendingKey) ?? false;
+    final token = await getToken();
     final response = await _client.post(
-      Uri.parse('$_baseUrl/auth/google'),
-      headers: {'Content-Type': 'application/json'},
+      Uri.parse('$_baseUrl/auth/supabase'),
+      headers: link && token != null
+          ? _authHeaders(token)
+          : {'Content-Type': 'application/json'},
       body: jsonEncode({
-        'id_token': idToken,
-        'access_token': accessToken,
+        'access_token': session.accessToken,
+        'link_account': link,
       }),
     );
     if (response.statusCode < 200 || response.statusCode >= 300) {
       throw AuthException(_readErrorMessage(response.body));
     }
+    await prefs.remove(_linkPendingKey);
+    await prefs.remove(_oauthPendingKey);
+    return _saveAccount(response.body);
+  }
 
-    final data = jsonDecode(response.body) as Map<String, dynamic>;
-    final token = data['token'] as String;
-    final savedUsername = data['username'] as String;
-    final id = data['user_id'] as String;
-
+  Future<Account> _saveAccount(String body) async {
+    final data = jsonDecode(body) as Map<String, dynamic>;
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(_tokenKey, token);
-    await prefs.setString(_usernameKey, savedUsername);
-
-    return Account(id: id, username: savedUsername);
+    await prefs.setString(_tokenKey, data['token'] as String);
+    await prefs.setString(_usernameKey, data['username'] as String);
+    return Account(
+      id: data['user_id'] as String,
+      username: data['username'] as String,
+    );
   }
 
   Future<String?> getToken() async {
@@ -171,10 +208,7 @@ class AuthService {
     final response = await _client.post(
       Uri.parse('$_baseUrl$endpoint'),
       headers: {'Content-Type': 'application/json'},
-      body: jsonEncode({
-        'username': username.trim(),
-        'password': password,
-      }),
+      body: jsonEncode({'username': username.trim(), 'password': password}),
     );
 
     if (response.statusCode < 200 || response.statusCode >= 300) {

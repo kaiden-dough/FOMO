@@ -1,9 +1,10 @@
 param(
     [Parameter(Mandatory = $true)]
     [string]$MapsApiKey,
-    [Parameter(Mandatory = $true)]
-    [string]$GoogleWebClientId,
-    [string]$Host = "localhost",
+    [string]$SupabaseUrl = "",
+    [string]$SupabasePublishableKey = "",
+    [string]$BackendUrl = "http://localhost:8000",
+    [string]$WebHost = "localhost",
     [int]$Port = 3000
 )
 
@@ -14,9 +15,11 @@ $indexPath = Join-Path $projectRoot "web/index.html"
 $flutterArgs = @(
     "run",
     "-d", "chrome",
-    "--web-hostname", $Host,
+    "--web-hostname", $WebHost,
     "--web-port", $Port,
-    "--dart-define=GOOGLE_WEB_CLIENT_ID=$GoogleWebClientId"
+    "--dart-define=BACKEND_URL=$BackendUrl",
+    "--dart-define=SUPABASE_URL=$SupabaseUrl",
+    "--dart-define=SUPABASE_PUBLISHABLE_KEY=$SupabasePublishableKey"
 )
 
 $original = Get-Content -Path $indexPath -Raw
