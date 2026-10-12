@@ -26,6 +26,6 @@ services:
       - key: CORS_ORIGINS
         sync: false
       - key: AUTH_MODE
-        value: hybrid
+        value: google
       - key: DEPLOYMENT_COLOR
         value: green

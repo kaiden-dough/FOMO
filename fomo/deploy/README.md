@@ -6,7 +6,7 @@ This repository contains a Python/FastAPI API and Flutter frontend. Supabase hos
 
 The live blue API is **https://fomo-bk8f.onrender.com**. Its health check returned 200 and its routes still expose the original password/direct-Google flow. The new Supabase exchange is not live there.
 
-The separate candidate API is provisioned at **https://fomo-auth-green.onrender.com** (Render service `srv-db6k773rjlhs73f5matg`, free plan, manual deployments, `/health` check). It uses the same Supabase Postgres database as blue and currently runs `AUTH_MODE=hybrid`. `render-green.yaml` records the equivalent infrastructure settings. The additive database and restriction migrations have already been applied to FOMO's Supabase project.
+The Google-only API is provisioned at **https://fomo-auth-green.onrender.com** (Render service `srv-db6k773rjlhs73f5matg`, free plan, manual deployments, `/health` check). It uses the same Supabase Postgres database as blue and runs `AUTH_MODE=google`. The additive database and restriction migrations have already been applied to FOMO's Supabase project. Blue's automatic deployments are disabled to preserve its rollback release.
 
 Create a Vercel preview from the feature branch with `BACKEND_URL` set to green's actual assigned Render URL, `SUPABASE_URL`, `SUPABASE_PUBLISHABLE_KEY`, and the existing `GOOGLE_MAPS_API_KEY`. Allow its exact frontend URL in CORS and Supabase redirect settings. Keep the existing production frontend and blue API serving users while testing actual Google signup, repeat login, cancellation, logout, and protected actions on this preview.
 
@@ -80,4 +80,6 @@ python switch.py green --oauth-verified
 
 ## Current limits
 
-Google was disabled in the connected Supabase project's provider settings when inspected. Its client secret and Render management access were unavailable, so no real OAuth login, green Render service, Docker stack, or live traffic switch was performed. Docker Desktop's engine was not running on this machine. The committed database is a local development snapshot; do not deploy it as production data.
+Google is enabled in FOMO's Supabase project. Actual Google signup, repeat login without duplicate accounts, protected account access, and logout were verified on the exact allow-listed Vercel branch preview. Green's health and Google-only configuration passed; password login and signup both return 403. The production frontend uses green's API and the same public Supabase settings. Keep the old Vercel deployment `dpl_8t5Wc62vFnJvCgMJ2ajB4fWDuDiP` with blue at commit `46b2532` for rollback.
+
+The Docker alternative has not been run; Docker Desktop's engine was unavailable. Native callback setup remains unverified. Do not deploy the local SQLite snapshot as production data.
