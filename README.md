@@ -2,7 +2,7 @@
 
 Host events, RSVP, and never miss a night out again. FOMO helps you discover events, see who's going, and keep up with friends.
 
-**[Open the live app](https://fomo-puce.vercel.app/)** · **[GitHub repository](https://github.com/kaiden-dough/FOMO)**
+**[Open the live app](https://fomo-puce.vercel.app/)**
 
 ## Features
 
